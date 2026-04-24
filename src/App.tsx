@@ -10,6 +10,10 @@ import PublicLayout from "./components/Public";
 import HomePage from "./Pages/HomePage";
 import Login from "./Pages/Login";
 import Register from "./Pages/Register";
+import Policy from "./Pages/Policy";
+import Terms from "./Pages/Terms";
+import Support from "./Pages/Support";
+import ForgotPassword from "./Pages/ForgotPassword";
 
 function App() {
   return (
@@ -20,6 +24,10 @@ function App() {
           <Route index element={<HomePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/policy" element={<Policy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
         {/* Student Routes */}
         <Route path="/student/dashboard" element={<Dashboard />} />

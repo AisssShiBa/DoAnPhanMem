@@ -101,12 +101,12 @@ export default function Register() {
           {/* Terms */}
           <p className="text-center text-xs text-gray-600 mt-4">
             Bằng cách đăng ký, bạn đồng ý với{" "}
-            <a
-              href="#"
+            <Link
+              to="/terms"
               className="text-gray-400 hover:text-gray-300 underline underline-offset-2 transition"
             >
               Điều khoản dịch vụ
-            </a>
+            </Link>
           </p>
 
           <div className="my-5 h-px bg-white/10" />

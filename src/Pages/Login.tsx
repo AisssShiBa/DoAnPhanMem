@@ -65,12 +65,12 @@ export default function Login() {
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Mật khẩu
                 </label>
-                <a
-                  href="#"
+                <Link
+                  to="/forgot-password"
                   className="text-xs text-indigo-400 hover:text-indigo-300 transition"
                 >
                   Quên mật khẩu?
-                </a>
+                </Link>
               </div>
               <input
                 type="password"
