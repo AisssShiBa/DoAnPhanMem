@@ -3,13 +3,14 @@ import Dashboard from "./Pages/Student/Dashboard";
 import TaskList from "./Pages/Student/TaskList";
 import CalendarView from "./Pages/Student/CalendarView";
 import Settings from "./Pages/Student/Settings";
-import AdminDashboard from "./Pages/Admin/AdminDashboard";
-import UserManagement from "./Pages/Admin/UserManagement";
-import SystemBackup from "./Pages/Admin/SystemBackup";
+
 import PublicLayout from "./components/Public";
 import HomePage from "./Pages/HomePage";
 import Login from "./Pages/Login";
 import Register from "./Pages/Register";
+
+import UserLayout from "./components/User";
+import NotFound from "./Pages/NotFound";
 
 function App() {
   return (
@@ -22,15 +23,15 @@ function App() {
           <Route path="/register" element={<Register />} />
         </Route>
         {/* Student Routes */}
-        <Route path="/student/dashboard" element={<Dashboard />} />
-        <Route path="/student/tasks" element={<TaskList />} />
-        <Route path="/student/calendar" element={<CalendarView />} />
-        <Route path="/student/settings" element={<Settings />} />
-
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<UserManagement />} />
-        <Route path="/admin/backup" element={<SystemBackup />} />
+        <Route path="/user" element={<UserLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="/user/tasks" element={<TaskList />} />
+          <Route path="/user/calendar" element={<CalendarView />} />
+          <Route path="/user/settings" element={<Settings />} />
+        </Route>
+        <Route>
+          <Route path="*" element={<NotFound />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
