@@ -2,6 +2,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import logo from "../../assets/Images/Logo.png";
+import { Settings } from "lucide-react";
+
 interface Props {
   name: string;
   onNavigate: (page: string) => void;
@@ -26,7 +28,7 @@ const HeaderUser: React.FC<Props> = ({ name, onNavigate }) => {
 
           <button
             className="cursor-pointer"
-            onClick={() => onNavigate("/student/tasks")}
+            onClick={() => onNavigate("tasks")}
           >
             Task
           </button>
@@ -42,6 +44,12 @@ const HeaderUser: React.FC<Props> = ({ name, onNavigate }) => {
             className="bg-red-500 px-3 py-1 rounded cursor-pointer hover:bg-red-200 transition-colors"
           >
             Logout
+          </button>
+          <button
+            className="cursor-pointer hover:bg-white/50 p-2 rounded-2xl"
+            onClick={() => onNavigate("settings")}
+          >
+            <Settings />
           </button>
         </div>
       </div>
