@@ -1,10 +1,8 @@
-import React from "react";
-
 export default function Support() {
   return (
     <div className="min-h-screen text-white p-8 md:p-16 max-w-5xl mx-auto">
       {/* Tiêu đề chính */}
-      <h1 className="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+      <h1 className="text-4xl font-extrabold mb-4 text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-purple-400">
         TRUNG TÂM HỖ TRỢ SOFTWHERE
       </h1>
 
