@@ -1,11 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Dashboard from "./Pages/Student/Dashboard";
-import TaskList from "./Pages/Student/TaskList";
-import CalendarView from "./Pages/Student/CalendarView";
-import Settings from "./Pages/Student/Settings";
-import AdminDashboard from "./Pages/Admin/AdminDashboard";
-import UserManagement from "./Pages/Admin/UserManagement";
-import SystemBackup from "./Pages/Admin/SystemBackup";
+// Public
 import PublicLayout from "./components/Public";
 import HomePage from "./Pages/HomePage";
 import Login from "./Pages/Login";
@@ -14,6 +8,19 @@ import Policy from "./Pages/Policy";
 import Terms from "./Pages/Terms";
 import Support from "./Pages/Support";
 import ForgotPassword from "./Pages/ForgotPassword";
+// Student
+import Dashboard from "./Pages/Student/Dashboard";
+import TaskList from "./Pages/Student/TaskList";
+import CalendarView from "./Pages/Student/CalendarView";
+import Settings from "./Pages/Student/Settings";
+// Admin
+import AdminLayout from "./Pages/Admin/AdminLayout";
+import AdminDashboard from "./Pages/Admin/AdminDashboard";
+import UserManagement from "./Pages/Admin/UserManagement";
+import SystemBackup from "./Pages/Admin/SystemBackup";
+import DefaultTagsManagement from "./Pages/Admin/DefaultTagsManagement";
+import SystemNotifications from "./Pages/Admin/SystemNotification";
+import AuditLog from "./Pages/Admin/AuditLog";
 
 function App() {
   return (
@@ -36,9 +43,14 @@ function App() {
         <Route path="/student/settings" element={<Settings />} />
 
         {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<UserManagement />} />
-        <Route path="/admin/backup" element={<SystemBackup />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<UserManagement />} />
+          <Route path="backup" element={<SystemBackup />} />
+          <Route path="tags" element={<DefaultTagsManagement />} />
+          <Route path="notifications" element={<SystemNotifications />} />
+          <Route path="logs" element={<AuditLog />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );
