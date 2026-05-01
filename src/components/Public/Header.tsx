@@ -16,13 +16,6 @@ const PublicHeader: React.FC = () => {
         </Link>
 
         {/* Login button */}
-        <Link
-          to="/login"
-          className="px-5 py-2 rounded-lg border border-blue-600 text-blue-600 font-medium 
-          hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-sm"
-        >
-          Đăng nhập
-        </Link>
       </div>
     </header>
   );

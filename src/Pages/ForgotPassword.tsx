@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 
 export default function ForgotPassword() {
@@ -28,7 +27,7 @@ export default function ForgotPassword() {
 
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-medium rounded-xl transition-all shadow-lg hover:shadow-indigo-500/25"
+            className="w-full py-3 px-4 bg-linear-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-medium rounded-xl transition-all shadow-lg hover:shadow-indigo-500/25"
           >
             Gửi yêu cầu
           </button>
