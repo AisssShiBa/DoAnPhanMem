@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router";
 
 const Footer: React.FC = () => {
   return (
@@ -10,15 +11,15 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-6 text-gray-400">
-          <a href="#" className="hover:text-indigo-400 transition">
+          <Link to="/policy" className="hover:text-indigo-400 transition">
             Chính sách
-          </a>
-          <a href="#" className="hover:text-indigo-400 transition">
+          </Link>
+          <Link to="/terms" className="hover:text-indigo-400 transition">
             Điều khoản
-          </a>
-          <a href="#" className="hover:text-indigo-400 transition">
+          </Link>
+          <Link to="/support" className="hover:text-indigo-400 transition">
             Hỗ trợ
-          </a>
+          </Link>
         </div>
       </div>
     </footer>

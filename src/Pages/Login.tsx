@@ -1,20 +1,56 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../services/authService"; // Cập nhật đường dẫn nếu cần
+import { useAuthStore } from "../store/authStore"; // Cập nhật đường dẫn nếu cần
+import axios from "axios";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", email);
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const data = await authService.signin({ email, password });
+      setAuth(data.token, data.user);
+
+      if (data.user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/user");
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        // Lỗi do Backend trả về (API error)
+        setError(
+          err.response?.data?.error || "Đăng nhập thất bại. Vui lòng thử lại!",
+        );
+      } else {
+        // Lỗi khác (ví dụ: mất mạng, lỗi code logic...)
+        setError("Đã xảy ra lỗi không xác định!");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }; // <--- LỖI CỦA BẠN LÀ THIẾU DẤU NÀY Ở ĐÂY
+
+  const handleGoogleLogin = () => {
+    authService.loginWithGoogle();
   };
 
   return (
-    <div className="min-h-screen  flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-gray-900">
       {/* Glow backgrounds */}
-      <div className="absolute -top-15 left-1/2 -translate-x-1/2 w-125 h-75  opacity-20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-75 h-75  opacity-15 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute -top-15 left-1/2 -translate-x-1/2 w-125 h-75 bg-indigo-500 opacity-20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-75 h-75 bg-purple-500 opacity-15 blur-[100px] rounded-full pointer-events-none" />
 
       <div className="relative w-full max-w-md">
         {/* Card */}
@@ -44,6 +80,13 @@ export default function Login() {
           <p className="text-gray-500 text-center text-sm mb-7">
             Đăng nhập để tiếp tục học tập
           </p>
+
+          {/* Hiển thị lỗi nếu có */}
+          {error && (
+            <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -84,9 +127,10 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/30 hover:opacity-90 active:scale-[0.98] transition mt-2"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-linear-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-indigo-500/30 hover:opacity-90 active:scale-[0.98] transition mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Đăng nhập
+              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </button>
           </form>
 
@@ -98,7 +142,11 @@ export default function Login() {
           </div>
 
           {/* Social login */}
-          <button className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 transition">
+          <button
+            onClick={handleGoogleLogin}
+            type="button"
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-xl border border-white/10 bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 transition"
+          >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -117,7 +165,7 @@ export default function Login() {
                 fill="#EA4335"
               />
             </svg>
-            Đăng nhập bằng Google / Microsoft
+            Đăng nhập bằng Google
           </button>
 
           <p className="text-center text-xs text-gray-600 mt-6">

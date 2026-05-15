@@ -14,8 +14,6 @@ const PublicHeader: React.FC = () => {
             className="h-22 object-contain transition-transform duration-300 group-hover:scale-105"
           />
         </Link>
-
-        {/* Login button */}
       </div>
     </header>
   );

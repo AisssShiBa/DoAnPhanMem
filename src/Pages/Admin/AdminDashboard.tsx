@@ -1,338 +1,865 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
-  BarChart3,
   CalendarDays,
   CheckCircle2,
   FileDown,
   Loader2,
+  RefreshCw,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  Target,
+  Clock,
+  Zap,
+  Crown,
+  AlertTriangle,
 } from "lucide-react";
-
-// --- Cấu trúc dữ liệu (Interfaces) ---
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  RadialBarChart,
+  RadialBar,
+} from "recharts";
+import * as XLSX from "xlsx";
+import { toast } from "sonner";
+import { adminService } from "../../services/adminService";
+import { SkeletonCard } from "../../components/Admin/Skeleton";
+import ErrorState from "../../components/Admin/ErrorState";
+import UserActivityHeatmap from "../../Pages/Admin/UserActivityHeatmap";
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 interface StatItem {
   label: string;
-  value: number | string;
+  value: string;
   change: string;
   isIncrease: boolean;
   icon: React.ReactNode;
+  color: string;
+  bgColor: string;
 }
 
-interface ChartData {
-  label: string;
-  value: number;
+interface TopUser {
+  id: number;
+  full_name: string | null;
+  email: string;
+  taskCount: number;
+  doneCount: number;
+  status: string;
 }
 
-interface SystemHealth {
-  cpu: number;
-  ram: number;
-  disk: number;
-}
+// ─────────────────────────────────────────────────────────────
+// Custom Tooltip
+// ─────────────────────────────────────────────────────────────
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { value: number; name?: string; color?: string }[];
+  label?: string;
+}) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#12122a] border border-white/10 rounded-xl px-4 py-3 text-xs shadow-2xl backdrop-blur-md">
+      <p className="text-gray-400 mb-2 font-medium">{label}</p>
+      {payload.map((p, i) => (
+        <p key={i} className="font-bold" style={{ color: p.color || "#fff" }}>
+          {p.name ? `${p.name}: ` : ""}
+          {p.value}
+        </p>
+      ))}
+    </div>
+  );
+};
 
-export default function AdminDashboard() {
-  // --- States quản lý dữ liệu ---
-  const [stats, setStats] = useState<StatItem[]>([]);
-  const [dauData, setDauData] = useState<ChartData[]>([]);
-  const [monthlyData, setMonthlyData] = useState<ChartData[]>([]);
-  const [sysHealth, setSysHealth] = useState<SystemHealth>({
-    cpu: 0,
-    ram: 0,
-    disk: 0,
-  });
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
+// ─────────────────────────────────────────────────────────────
+// Avatar helper
+// ─────────────────────────────────────────────────────────────
+const AVATAR_COLORS = [
+  "from-violet-500 to-purple-600",
+  "from-blue-500 to-cyan-500",
+  "from-emerald-500 to-teal-500",
+  "from-orange-500 to-amber-500",
+  "from-pink-500 to-rose-500",
+  "from-indigo-500 to-blue-600",
+];
+const avatarColor = (id: number) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+const getInitials = (name: string | null) =>
+  (name ?? "?")
+    .split(" ")
+    .slice(-2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
 
-  // --- Giả lập gọi API từ Backend ---
+// ─────────────────────────────────────────────────────────────
+// Animated Counter
+// ─────────────────────────────────────────────────────────────
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
+    let start = 0;
+    const end = value;
+    if (start === end) return;
+    const duration = 800;
+    const step = Math.ceil(end / (duration / 16));
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= end) {
+        setDisplay(end);
+        clearInterval(timer);
+      } else setDisplay(start);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <>{display.toLocaleString("vi-VN")}</>;
+}
 
+// ─────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<StatItem[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [rawStats, setRawStats] = useState<Record<string, any>>({});
+  const [dauData, setDauData] = useState<{ label: string; value: number }[]>(
+    [],
+  );
+  const [monthlyData, setMonthlyData] = useState<
+    { label: string; value: number }[]
+  >([]);
+  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState(false);
+  const [dauDays, setDauDays] = useState(30);
+
+  // ── Task status breakdown (mock: derived from stats) ─────
+  const taskStatusData = rawStats.totalTasks
+    ? [
+        {
+          name: "Hoàn thành",
+          value: rawStats.doneTasks ?? 0,
+          color: "#10b981",
+        },
+        {
+          name: "Đang làm",
+          value: Math.max(
+            0,
+            (rawStats.totalTasks ?? 0) -
+              (rawStats.doneTasks ?? 0) -
+              Math.floor((rawStats.totalTasks ?? 0) * 0.15),
+          ),
+          color: "#6366f1",
+        },
+        {
+          name: "Chưa làm",
+          value: Math.floor((rawStats.totalTasks ?? 0) * 0.15),
+          color: "#f59e0b",
+        },
+      ]
+    : [];
+
+  const completionRate = rawStats.totalTasks
+    ? Math.round(((rawStats.doneTasks ?? 0) / rawStats.totalTasks) * 100)
+    : 0;
+
+  const radialData = [
+    { name: "Hoàn thành", value: completionRate, fill: "#6366f1" },
+  ];
+
+  // ── Load ─────────────────────────────────────────────────
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(false);
+    try {
+      const [statsData, dau, mau] = await Promise.all([
+        adminService.getSystemStats(),
+        adminService.getDauChart(dauDays),
+        adminService.getMauChart(6),
+      ]);
+
+      setRawStats(statsData);
+
+      // ── FIX: đọc đúng field từ API ──────────────────────
+      // API trả về: { dau: { value, change }, mauThisMonth: { value, change }, userGrowth, taskGrowth }
+      const dauValue = statsData.dau?.value ?? statsData.dauToday ?? 0;
+      const dauChange = statsData.dau?.change ?? "+0%";
+      const mauValue = statsData.mauThisMonth?.value ?? 0;
+      const mauChange = statsData.mauThisMonth?.change ?? "+0%";
+      const userGrowth = statsData.userGrowth ?? "+0%";
+      const taskGrowth = statsData.taskGrowth ?? "+0%";
+
+      setStats([
+        {
+          label: "Tổng người dùng",
+          value: (statsData.totalUsers ?? 0).toLocaleString("vi-VN"),
+          change: userGrowth,
+          isIncrease: !userGrowth.startsWith("-"),
+          icon: <Users size={20} />,
+          color: "text-violet-400",
+          bgColor: "bg-violet-500/10 border-violet-500/20",
+        },
+        {
+          label: "DAU hôm nay",
+          value: dauValue.toLocaleString("vi-VN"),
+          change: dauChange,
+          isIncrease: !dauChange.startsWith("-"),
+          icon: <Activity size={20} />,
+          color: "text-cyan-400",
+          bgColor: "bg-cyan-500/10 border-cyan-500/20",
+        },
+        {
+          label: "MAU tháng này",
+          value: mauValue.toLocaleString("vi-VN"),
+          change: mauChange,
+          isIncrease: !mauChange.startsWith("-"),
+          icon: <CalendarDays size={20} />,
+          color: "text-fuchsia-400",
+          bgColor: "bg-fuchsia-500/10 border-fuchsia-500/20",
+        },
+        {
+          label: "Tổng Tasks",
+          value: (statsData.totalTasks ?? 0).toLocaleString("vi-VN"),
+          change: taskGrowth,
+          isIncrease: !taskGrowth.startsWith("-"),
+          icon: <CheckCircle2 size={20} />,
+          color: "text-emerald-400",
+          bgColor: "bg-emerald-500/10 border-emerald-500/20",
+        },
+      ]);
+
+      setDauData(dau);
+      setMonthlyData(mau);
+
+      // ── Top users: lấy từ users API, sort theo tasks ────
       try {
-        // TƯỞNG TƯỢNG ĐÂY LÀ ĐOẠN GỌI API THỰC TẾ
-        await new Promise((resolve) => setTimeout(resolve, 800));
-
-        // Dữ liệu tổng quan
-        setStats([
-          {
-            label: "Tổng người dùng",
-            value: "1,250",
-            change: "+12%",
-            isIncrease: true,
-            icon: <Users className="text-blue-400" size={24} />,
-          },
-          {
-            label: "DAU hôm nay",
-            value: "480",
-            change: "-2%",
-            isIncrease: false,
-            icon: <BarChart3 className="text-orange-400" size={24} />,
-          },
-          {
-            label: "MAU tháng này",
-            value: "1,220",
-            change: "+8%",
-            isIncrease: true,
-            icon: <CalendarDays className="text-purple-400" size={24} />,
-          },
-          {
-            label: "Tổng Tasks",
-            value: "15,400",
-            change: "+18%",
-            isIncrease: true,
-            icon: <CheckCircle2 className="text-emerald-400" size={24} />,
-          },
-        ]);
-
-        // Biểu đồ DAU
-        const mockDau30Days = Array.from({ length: 30 }, (_, i) => ({
-          label: `Ngày ${i + 1}`,
-          value: Math.floor(Math.random() * 300) + 200, // Random 200-500 users
-        }));
-        setDauData(mockDau30Days);
-
-        // Biểu đồ MAU
-        setMonthlyData([
-          { label: "Tháng 1", value: 850 },
-          { label: "Tháng 2", value: 920 },
-          { label: "Tháng 3", value: 1050 },
-          { label: "Tháng 4", value: 1100 },
-          { label: "Tháng 5", value: 1250 },
-        ]);
-
-        // Sức khỏe máy chủ (Set ổ đĩa giả lập ở mức 85% để kích hoạt cảnh báo)
-        setSysHealth({ cpu: 38, ram: 61, disk: 85 });
-      } catch (error) {
-        console.error("Lỗi khi tải dữ liệu dashboard:", error);
-      } finally {
-        setIsLoading(false);
+        const usersRes = await adminService.getUsers({
+          page: 1,
+          status: "ALL",
+        });
+        const sorted = [...(usersRes.users ?? [])]
+          .sort((a, b) => (b._count?.tasks ?? 0) - (a._count?.tasks ?? 0))
+          .slice(0, 8)
+          .map((u) => ({
+            id: u.id,
+            full_name: u.full_name,
+            email: u.email,
+            taskCount: u._count?.tasks ?? 0,
+            doneCount: Math.floor((u._count?.tasks ?? 0) * 0.6), // estimate
+            status: u.status,
+          }));
+        setTopUsers(sorted);
+      } catch {
+        // top users optional
       }
-    };
+    } catch {
+      setError(true);
+      toast.error("Không thể tải dữ liệu dashboard");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dauDays]);
 
-    fetchDashboardData();
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
 
-    // Polling: Tự động cập nhật System Health mỗi 5 giây
-    const interval = setInterval(() => {
-      setSysHealth((prev) => ({
-        cpu: Math.floor(Math.random() * 30) + 20,
-        ram: Math.floor(Math.random() * 20) + 50,
-        disk: prev.disk,
-      }));
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // --- Tính toán giá trị MAX cho biểu đồ ---
-  const maxDau =
-    dauData.length > 0 ? Math.max(...dauData.map((d) => d.value)) : 1;
-  const maxUsers =
-    monthlyData.length > 0 ? Math.max(...monthlyData.map((d) => d.value)) : 1;
-
-  // --- Hàm xuất báo cáo Excel ---
-  const handleExportReport = () => {
+  // ── Export Excel ─────────────────────────────────────────
+  const handleExport = async () => {
     setIsExporting(true);
-    // Giả lập thời gian tạo file
-    setTimeout(() => {
-      setIsExporting(false);
-      alert(
-        "✅ Đã xuất báo cáo thành công! File 'System_Metrics_Report.xlsx' đang được tải xuống.",
+    try {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(
+          stats.map((s) => ({
+            "Chỉ số": s.label,
+            "Giá trị": s.value,
+            "Tăng trưởng": s.change,
+          })),
+        ),
+        "Tổng quan",
       );
-    }, 1500);
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(dauData),
+        "DAU",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(monthlyData),
+        "MAU",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(
+          topUsers.map((u) => ({
+            Tên: u.full_name,
+            Email: u.email,
+            Tasks: u.taskCount,
+            "Trạng thái": u.status,
+          })),
+        ),
+        "Top Users",
+      );
+      XLSX.writeFile(
+        wb,
+        `SoftWhere_Report_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
+      toast.success("Xuất báo cáo thành công!");
+    } catch {
+      toast.error("Không thể xuất báo cáo");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  // --- Giao diện đang tải ---
-  if (isLoading) {
+  if (error)
     return (
-      <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center text-indigo-400">
-        <span className="animate-pulse font-medium text-lg">
-          Đang tải dữ liệu hệ thống...
-        </span>
+      <div className="p-8">
+        <ErrorState onRetry={load} />
       </div>
     );
-  }
 
   return (
-    <div className="p-6 md:p-8">
-      {/* HEADER & NÚT XUẤT BÁO CÁO (AC-3) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+    <div className="p-6 md:p-8 space-y-8">
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-black text-white">
+          <h1 className="text-3xl font-black text-white tracking-tight">
             Dashboard{" "}
-            <span className="bg-linear-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-violet-400 via-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
               Admin
             </span>
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            Hệ thống quản trị và giám sát thời gian thực
+            Giám sát hệ thống thời gian thực ·{" "}
+            {new Date().toLocaleDateString("vi-VN", {
+              weekday: "long",
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            })}
           </p>
         </div>
-
-        {/* Nút Xuất Excel */}
-        <button
-          onClick={handleExportReport}
-          disabled={isExporting}
-          className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 px-4 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-        >
-          {isExporting ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <FileDown size={18} />
-          )}
-          {isExporting ? "Đang tạo file Excel..." : "Xuất báo cáo (.xlsx)"}
-        </button>
-      </div>
-
-      {/* YÊU CẦU AC-2: CẢNH BÁO DUNG LƯỢNG Ổ ĐĨA > 80% */}
-      {sysHealth.disk > 80 && (
-        <div className="bg-red-500/10 border border-red-500/30 px-5 py-4 rounded-2xl mb-8 flex items-center justify-between shadow-[0_0_15px_rgba(239,68,68,0.1)]">
-          <div className="flex items-center gap-4">
-            <span className="text-3xl animate-bounce">⚠️</span>
-            <div>
-              <p className="font-bold text-red-400">
-                Cảnh báo hệ thống: Dung lượng lưu trữ sắp đầy!
-              </p>
-              <p className="text-sm text-gray-300 mt-0.5">
-                Dung lượng Disk hiện tại đạt{" "}
-                <strong className="text-white">{sysHealth.disk}%</strong>. Hệ
-                thống đã tự động gửi Email cảnh báo đến Quản trị viên để có kế
-                hoạch nâng cấp.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* THỐNG KÊ TỔNG QUAN (STATS CARDS) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        {stats.map((s) => (
-          <div
-            key={s.label}
-            className="bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-all rounded-2xl p-5 shadow-lg"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void load()}
+            disabled={isLoading}
+            className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition disabled:opacity-50"
           >
-            <div className="flex justify-between mb-3 items-center">
-              <span className="text-2xl bg-white/10 w-10 h-10 flex items-center justify-center rounded-lg text-white">
-                {s.icon}
-              </span>
-              <span
-                className={`text-xs font-bold px-2 py-1 rounded-full ${s.isIncrease ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}
-              >
-                {s.change}
-              </span>
-            </div>
-            <p className="text-3xl font-bold tracking-tight text-white">
-              {s.value}
-            </p>
-            <p className="text-gray-400 text-sm mt-1">{s.label}</p>
-          </div>
-        ))}
+            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={() => void handleExport()}
+            disabled={isExporting || isLoading}
+            className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 px-4 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50"
+          >
+            {isExporting ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <FileDown size={16} />
+            )}
+            {isExporting ? "Đang xuất..." : "Xuất Excel"}
+          </button>
+        </div>
       </div>
 
-      {/* BIỂU ĐỒ (CHARTS) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-        {/* Biểu đồ DAU */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg flex flex-col justify-between">
-          <h2 className="text-base font-bold mb-6 text-gray-200">
-            Daily Active Users (DAU) - 30 ngày qua
-          </h2>
-          <div className="flex items-end justify-between h-48 gap-0.5 sm:gap-1">
-            {dauData.map((d, index) => (
+      {/* ── Stat Cards ─────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)
+          : stats.map((s) => (
               <div
-                key={d.label}
-                className="flex flex-col items-center justify-end h-full w-full group relative"
+                key={s.label}
+                className={`relative overflow-hidden rounded-2xl border p-5 transition-all hover:scale-[1.02] hover:shadow-lg ${s.bgColor} bg-white/5`}
               >
+                {/* Glow dot */}
                 <div
-                  className="w-full max-w-[12px] sm:max-w-[16px] rounded-t-sm bg-linear-to-t from-indigo-600/50 to-purple-500 hover:from-indigo-400 hover:to-purple-300 transition-all"
-                  style={{ height: `${(d.value / maxDau) * 100}%` }}
-                >
-                  {/* Tooltip khi hover */}
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 border border-gray-700 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap text-white">
-                    {d.label}: {d.value}
+                  className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-10 blur-2xl"
+                  style={{ background: "currentColor" }}
+                />
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-2 rounded-xl bg-white/5 ${s.color}`}>
+                    {s.icon}
+                  </div>
+                  <span
+                    className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${s.isIncrease ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}
+                  >
+                    {s.isIncrease ? (
+                      <TrendingUp size={10} />
+                    ) : (
+                      <TrendingDown size={10} />
+                    )}
+                    {s.change}
                   </span>
                 </div>
-                {/* Chỉ hiển thị Label cho các mốc ngày (5, 10, 15, 20...) để tránh rối mắt */}
-                <div className="h-6 mt-2">
-                  {index === 0 || (index + 1) % 5 === 0 ? (
-                    <span className="text-[10px] text-gray-500 font-medium">
-                      {index + 1}
-                    </span>
-                  ) : null}
-                </div>
+                <p className="text-3xl font-black text-white tracking-tight">
+                  {isLoading ? "—" : s.value}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">{s.label}</p>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* Biểu đồ MAU */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg">
-          <h2 className="text-base font-bold mb-6 text-gray-200">
-            Tăng trưởng người dùng (MAU)
-          </h2>
-          <div className="space-y-4">
-            {monthlyData.map((m) => (
-              <div key={m.label} className="group">
-                <div className="flex justify-between text-sm mb-2 text-gray-400 group-hover:text-white transition-colors">
-                  <span className="font-medium">{m.label}</span>
-                  <span className="font-bold">{m.value} users</span>
-                </div>
-                <div className="h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                  <div
-                    className="h-full bg-linear-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-out"
-                    style={{ width: `${(m.value / maxUsers) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
-      {/* SỨC KHỎE HỆ THỐNG (SYSTEM HEALTH) */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-base font-bold text-gray-200">
-            Tình trạng Máy chủ (Server Health)
-          </h2>
-          <span className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-full">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Online
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* ── Quick Stats Row ────────────────────────────────── */}
+      {!isLoading && rawStats.totalTasks && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             {
-              label: "CPU Usage",
-              value: sysHealth.cpu,
-              color: sysHealth.cpu > 80 ? "bg-red-500" : "bg-blue-500",
+              label: "Users active",
+              value: rawStats.activeUsers,
+              icon: <Zap size={14} />,
+              color: "text-emerald-400",
             },
             {
-              label: "RAM Usage",
-              value: sysHealth.ram,
-              color: sysHealth.ram > 80 ? "bg-red-500" : "bg-emerald-500",
+              label: "Tasks hoàn thành",
+              value: rawStats.doneTasks,
+              icon: <CheckCircle2 size={14} />,
+              color: "text-blue-400",
             },
             {
-              label: "Disk Space",
-              value: sysHealth.disk,
-              color: sysHealth.disk > 80 ? "bg-red-500" : "bg-purple-500",
+              label: "Tasks chưa xong",
+              value: rawStats.pendingTasks,
+              icon: <Clock size={14} />,
+              color: "text-amber-400",
+            },
+            {
+              label: "Danh mục",
+              value: rawStats.totalCategories,
+              icon: <Target size={14} />,
+              color: "text-violet-400",
             },
           ].map((item) => (
-            <div key={item.label}>
-              <div className="flex justify-between text-sm text-gray-400 mb-2">
-                <span className="font-medium">{item.label}</span>
-                <span
-                  className={`font-bold ${item.value > 80 ? "text-red-400 animate-pulse" : "text-white"}`}
-                >
-                  {item.value}%
-                </span>
-              </div>
-              <div className="h-2 bg-black/40 rounded-full overflow-hidden border border-white/5">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${item.color}`}
-                  style={{ width: `${item.value}%` }}
-                />
+            <div
+              key={item.label}
+              className="bg-white/3 border border-white/5 rounded-xl px-4 py-3 flex items-center gap-3"
+            >
+              <span className={item.color}>{item.icon}</span>
+              <div>
+                <p className="text-white font-bold text-lg leading-none">
+                  <AnimatedNumber value={item.value ?? 0} />
+                </p>
+                <p className="text-gray-500 text-xs mt-0.5">{item.label}</p>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* ── Charts Row 1: DAU + MAU ────────────────────────── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* DAU Area Chart */}
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-sm font-bold text-white">
+                Daily Active Users
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Người dùng hoạt động mỗi ngày
+              </p>
+            </div>
+            <select
+              value={dauDays}
+              onChange={(e) => setDauDays(Number(e.target.value))}
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-violet-500 transition"
+            >
+              <option className="text-black" value={7}>
+                7 ngày
+              </option>
+              <option className="text-black" value={14}>
+                14 ngày
+              </option>
+              <option className="text-black" value={30}>
+                30 ngày
+              </option>
+              <option className="text-black" value={60}>
+                60 ngày
+              </option>
+            </select>
+          </div>
+          {isLoading ? (
+            <div className="h-52 animate-pulse bg-white/5 rounded-xl" />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart
+                data={dauData}
+                margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="dauGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.04)"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: "#4b5563", fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval={Math.ceil(dauDays / 7)}
+                />
+                <YAxis
+                  tick={{ fill: "#4b5563", fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  name="Users"
+                  stroke="#7c3aed"
+                  strokeWidth={2}
+                  fill="url(#dauGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: "#a78bfa", strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* MAU Bar Chart */}
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-6 shadow-lg">
+          <div className="mb-5">
+            <h2 className="text-sm font-bold text-white">
+              Monthly Active Users
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Tăng trưởng người dùng hàng tháng
+            </p>
+          </div>
+          {isLoading ? (
+            <div className="h-52 animate-pulse bg-white/5 rounded-xl" />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
+                data={monthlyData}
+                margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(255,255,255,0.04)"
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: "#4b5563", fontSize: 11 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#4b5563", fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar
+                  dataKey="value"
+                  name="Users"
+                  fill="#06b6d4"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={44}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* ── Charts Row 2: Task Status Pie + Completion Rate ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Task Status Donut */}
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-6 shadow-lg">
+          <h2 className="text-sm font-bold text-white mb-1">Phân bổ Tasks</h2>
+          <p className="text-xs text-gray-500 mb-4">Theo trạng thái hiện tại</p>
+          {isLoading || !taskStatusData.length ? (
+            <div className="h-48 animate-pulse bg-white/5 rounded-xl" />
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={180}>
+                <PieChart>
+                  <Pie
+                    data={taskStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={52}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {taskStatusData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} strokeWidth={0} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-2">
+                {taskStatusData.map((item) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ background: item.color }}
+                      />
+                      <span className="text-gray-400">{item.name}</span>
+                    </div>
+                    <span className="font-bold text-white">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Completion Rate Radial */}
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-6 shadow-lg flex flex-col items-center justify-center">
+          <h2 className="text-sm font-bold text-white mb-1 self-start">
+            Completion Rate
+          </h2>
+          <p className="text-xs text-gray-500 mb-4 self-start">
+            Tỉ lệ tasks hoàn thành
+          </p>
+          {isLoading ? (
+            <div className="h-48 w-full animate-pulse bg-white/5 rounded-xl" />
+          ) : (
+            <div className="relative flex flex-col items-center">
+              <ResponsiveContainer width={180} height={180}>
+                <RadialBarChart
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={82}
+                  data={radialData}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <RadialBar
+                    dataKey="value"
+                    background={{ fill: "rgba(255,255,255,0.05)" }}
+                    cornerRadius={8}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black text-white">
+                  {completionRate}%
+                </span>
+                <span className="text-xs text-gray-500">done</span>
+              </div>
+              <div className="mt-2 text-center">
+                <p className="text-xs text-gray-500">
+                  <span className="text-emerald-400 font-bold">
+                    {rawStats.doneTasks ?? 0}
+                  </span>{" "}
+                  / {rawStats.totalTasks ?? 0} tasks
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* System Health */}
+        <div className="bg-white/5 border border-white/8 rounded-2xl p-6 shadow-lg">
+          <h2 className="text-sm font-bold text-white mb-1">System Health</h2>
+          <p className="text-xs text-gray-500 mb-5">Tình trạng hệ thống</p>
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-8 animate-pulse bg-white/5 rounded-lg"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {[
+                {
+                  label: "Tỉ lệ users active",
+                  value: rawStats.totalUsers
+                    ? Math.round(
+                        (rawStats.activeUsers / rawStats.totalUsers) * 100,
+                      )
+                    : 0,
+                  color: "bg-emerald-500",
+                },
+                {
+                  label: "DAU/MAU ratio",
+                  value: rawStats.mauThisMonth?.value
+                    ? Math.round(
+                        ((rawStats.dau?.value ?? rawStats.dauToday ?? 0) /
+                          rawStats.mauThisMonth.value) *
+                          100,
+                      )
+                    : 0,
+                  color: "bg-violet-500",
+                },
+                {
+                  label: "Task completion",
+                  value: completionRate,
+                  color: "bg-cyan-500",
+                },
+                {
+                  label: "Users với tasks",
+                  value: topUsers.length
+                    ? Math.round(
+                        (topUsers.filter((u) => u.taskCount > 0).length /
+                          topUsers.length) *
+                          100,
+                      )
+                    : 0,
+                  color: "bg-fuchsia-500",
+                },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className="text-gray-400">{item.label}</span>
+                    <span className="font-bold text-white">{item.value}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${item.color}`}
+                      style={{ width: `${Math.min(100, item.value)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <UserActivityHeatmap />
+      {/* ── Top Users Table ────────────────────────────────── */}
+      <div className="bg-white/5 border border-white/8 rounded-2xl overflow-hidden shadow-lg">
+        <div className="px-6 py-4 border-b border-white/8 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <Crown size={16} className="text-amber-400" />
+              Top Users hoạt động
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Xếp hạng theo số lượng tasks
+            </p>
+          </div>
+          <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full font-semibold">
+            Top {topUsers.length}
+          </span>
+        </div>
+
+        <div className="divide-y divide-white/5">
+          {isLoading
+            ? Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="px-6 py-4 flex items-center gap-4 animate-pulse"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-white/10" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3.5 w-32 bg-white/10 rounded" />
+                    <div className="h-3 w-24 bg-white/5 rounded" />
+                  </div>
+                  <div className="h-4 w-16 bg-white/10 rounded" />
+                </div>
+              ))
+            : topUsers.map((user, idx) => {
+                const pct = user.taskCount
+                  ? Math.round((user.doneCount / user.taskCount) * 100)
+                  : 0;
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div
+                    key={user.id}
+                    className="px-6 py-3.5 flex items-center gap-4 hover:bg-white/3 transition-colors group"
+                  >
+                    {/* Rank */}
+                    <div className="w-6 text-center">
+                      {idx < 3 ? (
+                        <span className="text-lg">{medals[idx]}</span>
+                      ) : (
+                        <span className="text-gray-600 text-sm font-bold">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Avatar */}
+                    <div
+                      className={`w-9 h-9 rounded-xl bg-linear-to-br ${avatarColor(user.id)} flex items-center justify-center text-xs font-black text-white shrink-0`}
+                    >
+                      {getInitials(user.full_name)}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-100 truncate">
+                        {user.full_name ?? "—"}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="hidden md:flex items-center gap-3 w-36">
+                      <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-linear-to-r from-violet-500 to-cyan-500 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-500 w-8 text-right">
+                        {pct}%
+                      </span>
+                    </div>
+
+                    {/* Task count */}
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-white">
+                        {user.taskCount}
+                      </p>
+                      <p className="text-xs text-gray-600">tasks</p>
+                    </div>
+
+                    {/* Status dot */}
+                    <div
+                      className={`w-2 h-2 rounded-full shrink-0 ${user.status === "ACTIVE" ? "bg-emerald-400" : user.status === "BANNED" ? "bg-red-400" : "bg-amber-400"}`}
+                    />
+                  </div>
+                );
+              })}
+        </div>
+
+        {!isLoading && topUsers.length === 0 && (
+          <div className="px-6 py-12 text-center text-gray-600">
+            <AlertTriangle size={32} className="mx-auto mb-3 opacity-30" />
+            <p>Không có dữ liệu người dùng</p>
+          </div>
+        )}
       </div>
     </div>
   );
