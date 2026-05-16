@@ -22,7 +22,6 @@ import UserLayout from "./components/User";
 import AdminLayout from "./Pages/Admin/AdminLayout";
 import AdminDashboard from "./Pages/Admin/AdminDashboard";
 import UserManagement from "./Pages/Admin/UserManagement";
-import DefaultTagsManagement from "./Pages/Admin/DefaultTagsManagement";
 import SystemNotifications from "./Pages/Admin/SystemNotification";
 import AuditLog from "./Pages/Admin/AuditLog";
 import GoogleCallback from "./Pages/GoogleCallback";
@@ -77,7 +76,6 @@ function App() {
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<UserManagement />} />
-              <Route path="tags" element={<DefaultTagsManagement />} />
               <Route path="notifications" element={<SystemNotifications />} />
               <Route path="logs" element={<AuditLog />} />
             </Route>

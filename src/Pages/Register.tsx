@@ -5,8 +5,8 @@ import { authService } from "../services/authService";
 
 export default function Register() {
   /* =========================
-     STATES
-  ========================= */
+      STATES
+    ========================= */
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,8 +19,8 @@ export default function Register() {
   const [isRegistered, setIsRegistered] = useState(false);
 
   /* =========================
-     HANDLE REGISTER
-  ========================= */
+      HANDLE REGISTER
+    ========================= */
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -64,8 +64,8 @@ export default function Register() {
   };
 
   /* =========================
-     UI - MÀN HÌNH THÔNG BÁO XÁC MINH EMAIL
-  ========================= */
+      UI - MÀN HÌNH THÔNG BÁO XÁC MINH EMAIL
+    ========================= */
   if (isRegistered) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-gray-900">
@@ -100,8 +100,8 @@ export default function Register() {
   }
 
   /* =========================
-     UI - FORM ĐĂNG KÝ (MẶC ĐỊNH)
-  ========================= */
+      UI - FORM ĐĂNG KÝ (MẶC ĐỊNH)
+    ========================= */
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden bg-gray-900">
       {/* Glow backgrounds */}

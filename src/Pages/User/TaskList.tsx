@@ -466,6 +466,7 @@ function TaskModal({
   const [error, setError] = useState("");
 
   const [pendingReminders, setPendingReminders] = useState<Date[]>([]);
+  const pendingRemindersRef = useRef<Date[]>([]); // ✅ ref tránh stale closure
   const [reminderInput, setReminderInput] = useState<Date | null>(null);
   const [reminderError, setReminderError] = useState("");
 
@@ -478,6 +479,11 @@ function TaskModal({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Sync ref mỗi khi pendingReminders thay đổi
+  useEffect(() => {
+    pendingRemindersRef.current = pendingReminders;
+  }, [pendingReminders]);
 
   useEffect(() => {
     if (!initial) return;
@@ -530,10 +536,7 @@ function TaskModal({
 
   function addReminderToList() {
     if (!reminderInput) return;
-    if (reminderInput <= new Date()) {
-      setReminderError("Thời gian nhắc đã qua");
-      return;
-    }
+    // ✅ Bỏ validate "đã qua" ở client, để server quyết định (có buffer 60s)
     if (pendingReminders.some((r) => r.getTime() === reminderInput.getTime())) {
       setReminderError("Thời gian này đã có");
       return;
@@ -552,10 +555,8 @@ function TaskModal({
   function applyPreset(minutes: number) {
     if (!dueDate) return;
     const t = new Date(dueDate.getTime() - minutes * 60 * 1000);
-    if (t > new Date()) {
-      setReminderInput(t);
-      setReminderError("");
-    }
+    setReminderInput(t);
+    setReminderError("");
   }
 
   async function handleSave() {
@@ -564,6 +565,10 @@ function TaskModal({
       return;
     }
     setLoading(true);
+
+    // ✅ Đọc từ ref thay vì state để tránh stale closure
+    const remindersToPost = pendingRemindersRef.current;
+
     try {
       const payload = {
         title: title.trim(),
@@ -577,11 +582,26 @@ function TaskModal({
       if (initial) {
         await api.patch(`/tasks/${initial.id}`, payload);
         taskId = initial.id;
+
+        // Xóa reminder pending cũ trước khi tạo mới
+        try {
+          const existingRes = await api.get(`/tasks/${taskId}/reminders`);
+          const pendingOld = (existingRes.data.reminders as Reminder[]).filter(
+            (r) => r.status === "pending",
+          );
+          await Promise.all(
+            pendingOld.map((r) =>
+              api.delete(`/tasks/${taskId}/reminders/${r.id}`).catch(() => {}),
+            ),
+          );
+          // eslint-disable-next-line no-empty
+        } catch {}
       } else {
         const res = await api.post("/tasks", payload);
         taskId = res.data.task.id;
       }
 
+      // Tags
       if (selectedTagIds.length > 0) {
         await Promise.all(
           selectedTagIds.map((tagId) =>
@@ -590,12 +610,21 @@ function TaskModal({
         );
       }
 
-      if (pendingReminders.length > 0) {
-        await Promise.all(
-          pendingReminders.map((r) =>
-            api.post(`/tasks/${taskId}/reminders`, {
-              remind_time: r.toISOString(),
-            }),
+      // ✅ Dùng remindersToPost (từ ref) thay vì pendingReminders (state)
+      if (remindersToPost.length > 0) {
+        await Promise.allSettled(
+          remindersToPost.map((r) =>
+            api
+              .post(`/tasks/${taskId}/reminders`, {
+                remind_time: r.toISOString(),
+              })
+              .catch((err) =>
+                console.error(
+                  "Reminder POST failed:",
+                  err.response?.data,
+                  r.toISOString(),
+                ),
+              ),
           ),
         );
       }
