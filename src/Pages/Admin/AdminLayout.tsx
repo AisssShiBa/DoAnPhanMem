@@ -30,12 +30,6 @@ const menuItems = [
     desc: "Quản lý tài khoản",
   },
   {
-    path: "/admin/tags",
-    label: "Nhãn mặc định",
-    icon: <Tags size={18} />,
-    desc: "Thẻ gán tự động",
-  },
-  {
     path: "/admin/notifications",
     label: "Thông báo",
     icon: <Bell size={18} />,
