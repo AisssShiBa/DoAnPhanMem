@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
-  Tags,
   Bell,
   ScrollText,
   LogOut,
@@ -28,12 +27,6 @@ const menuItems = [
     label: "Người dùng",
     icon: <Users size={18} />,
     desc: "Quản lý tài khoản",
-  },
-  {
-    path: "/admin/tags",
-    label: "Nhãn mặc định",
-    icon: <Tags size={18} />,
-    desc: "Thẻ gán tự động",
   },
   {
     path: "/admin/notifications",
