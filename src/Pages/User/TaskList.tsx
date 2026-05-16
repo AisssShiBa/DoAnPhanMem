@@ -638,7 +638,6 @@ function TaskModal({
       }
 
       onSaved();
-      onClose();
     } catch (err) {
       const apiErr = err as ApiError;
       setError(apiErr?.response?.data?.error || "Lỗi hệ thống");
@@ -1251,10 +1250,6 @@ function TaskDetailPanelInner({
 
   async function addReminder() {
     if (!reminderDate) return;
-    if (reminderDate <= new Date()) {
-      setReminderError("Thời gian nhắc đã qua");
-      return;
-    }
     setReminderLoading(true);
     setReminderError("");
     try {
@@ -2888,7 +2883,10 @@ export default function TaskList() {
           categories={categories}
           initial={editTask}
           onClose={() => setShowTaskModal(false)}
-          onSaved={fetchAll}
+          onSaved={async () => {
+            await fetchAll();
+            setShowTaskModal(false);
+          }}
         />
       )}
       {confirmDelete && (
