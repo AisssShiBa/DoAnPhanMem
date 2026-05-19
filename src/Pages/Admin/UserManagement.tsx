@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  AlertCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -28,7 +29,11 @@ import {
   Cell,
 } from "recharts";
 import * as XLSX from "xlsx";
-import { adminService, type AdminUser } from "../../services/adminService";
+import {
+  adminService,
+  type AdminUser,
+  type UserTaskStats,
+} from "../../services/adminService";
 import ConfirmDialog from "../../components/Admin/ConfirmDialog";
 import { SkeletonRow } from "../../components/Admin/Skeleton";
 import EmptyState from "../../components/Admin/EmptyState";
@@ -46,16 +51,6 @@ interface ConfirmState {
   confirmLabel: string;
   variant: "danger" | "warning" | "primary";
   onConfirm: () => void;
-}
-
-interface UserTaskDetail {
-  userId: number;
-  total: number;
-  done: number;
-  inProgress: number;
-  todo: number;
-  completionRate: number;
-  recentTasks: { title: string; status: string; due?: string }[];
 }
 
 const CONFIRM_INITIAL: ConfirmState = {
@@ -88,7 +83,7 @@ const getInitials = (name: string | null) =>
     .toUpperCase();
 
 // ─────────────────────────────────────────────────────────────
-// Task Detail Drawer (Side Panel)
+// Task Detail Drawer — dùng API thật
 // ─────────────────────────────────────────────────────────────
 function UserTaskDrawer({
   user,
@@ -97,37 +92,32 @@ function UserTaskDrawer({
   user: AdminUser;
   onClose: () => void;
 }) {
-  // Simulate fetching task detail by user id
-  // In production: call adminService.getUserTaskStats(user.id)
-  const [taskDetail, setTaskDetail] = useState<UserTaskDetail | null>(null);
+  const [taskDetail, setTaskDetail] = useState<UserTaskStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
-    // Try fetch real data, fallback to estimated
-    const timer = setTimeout(() => {
-      const total = user._count?.tasks ?? 0;
-      const done = Math.floor(total * 0.55);
-      const inProg = Math.floor(total * 0.25);
-      const todo = total - done - inProg;
-      setTaskDetail({
-        userId: user.id,
-        total,
-        done,
-        inProgress: inProg,
-        todo,
-        completionRate: total > 0 ? Math.round((done / total) * 100) : 0,
-        recentTasks: [
-          { title: "Bài tập Giải tích", status: "done" },
-          { title: "Đồ án môn Mạng", status: "in_progress" },
-          { title: "Ôn tập cuối kỳ", status: "todo" },
-          { title: "Report môn CNPM", status: "done" },
-          { title: "Lab thực hành", status: "in_progress" },
-        ].slice(0, Math.min(5, total || 3)),
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setFetchError(false);
+
+    adminService
+      .getUserTaskStats(user.id)
+      .then((data) => {
+        if (!cancelled) setTaskDetail(data);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [user]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.id]);
 
   const statusColor: Record<string, string> = {
     done: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
@@ -150,10 +140,8 @@ function UserTaskDrawer({
 
   return (
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
-      {/* Backdrop */}
       <div className="flex-1 bg-black/50 backdrop-blur-sm" />
 
-      {/* Drawer */}
       <div
         className="w-full max-w-md bg-[#0f0f1e] border-l border-white/10 flex flex-col shadow-2xl overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -217,6 +205,11 @@ function UserTaskDrawer({
                 <div key={i} className="h-16 bg-white/5 rounded-xl" />
               ))}
             </div>
+          ) : fetchError ? (
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs">
+              <AlertCircle size={14} />
+              Không thể tải dữ liệu tasks
+            </div>
           ) : taskDetail ? (
             <>
               {/* Big stats */}
@@ -259,7 +252,7 @@ function UserTaskDrawer({
                 ))}
               </div>
 
-              {/* Completion rate bar */}
+              {/* Completion rate */}
               <div className="mb-5">
                 <div className="flex justify-between text-xs mb-2">
                   <span className="text-gray-400">Completion rate</span>
@@ -278,7 +271,7 @@ function UserTaskDrawer({
                 </p>
               </div>
 
-              {/* Mini bar chart */}
+              {/* Bar chart */}
               {taskDetail.total > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 mb-3">
@@ -324,6 +317,31 @@ function UserTaskDrawer({
                   </ResponsiveContainer>
                 </div>
               )}
+
+              {/* Categories */}
+              {taskDetail.categories.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-xs text-gray-500 mb-3">
+                    Danh mục phổ biến
+                  </p>
+                  <div className="space-y-2">
+                    {taskDetail.categories.map((cat) => (
+                      <div key={cat.name} className="flex items-center gap-2.5">
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                        <span className="text-xs text-gray-300 flex-1 truncate">
+                          {cat.name}
+                        </span>
+                        <span className="text-xs font-bold text-gray-400">
+                          {cat.count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -339,7 +357,8 @@ function UserTaskDrawer({
                 <div key={i} className="h-10 bg-white/5 rounded-lg" />
               ))}
             </div>
-          ) : taskDetail && taskDetail.recentTasks.length > 0 ? (
+          ) : fetchError ? null : taskDetail &&
+            taskDetail.recentTasks.length > 0 ? (
             <ul className="space-y-2">
               {taskDetail.recentTasks.map((task, i) => (
                 <li
@@ -353,13 +372,18 @@ function UserTaskDrawer({
                         ? "🔄"
                         : "📝"}
                   </span>
-                  <span className="flex-1 text-sm text-gray-200 truncate">
-                    {task.title}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-200 truncate">
+                      {task.title}
+                    </p>
+                    {task.due && (
+                      <p className="text-xs text-gray-600 mt-0.5">{task.due}</p>
+                    )}
+                  </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded border font-medium ${statusColor[task.status]}`}
+                    className={`text-xs px-2 py-0.5 rounded border font-medium shrink-0 ${statusColor[task.status] ?? statusColor.todo}`}
                   >
-                    {statusLabel[task.status]}
+                    {statusLabel[task.status] ?? task.status}
                   </span>
                 </li>
               ))}
@@ -704,7 +728,6 @@ export default function UserManagement() {
     });
   };
 
-  // Export users to Excel
   const handleExportUsers = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(
@@ -729,7 +752,6 @@ export default function UserManagement() {
 
   return (
     <div className="p-6 md:p-8 text-white">
-      {/* Modals / Drawers */}
       <ConfirmDialog
         open={confirm.open}
         title={confirm.title}
@@ -855,7 +877,6 @@ export default function UserManagement() {
                       key={user.id}
                       className="hover:bg-white/3 transition-colors group"
                     >
-                      {/* User */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div
@@ -875,16 +896,12 @@ export default function UserManagement() {
                           </div>
                         </div>
                       </td>
-
-                      {/* Contact */}
                       <td className="px-5 py-4">
                         <p className="text-sm text-gray-300">{user.email}</p>
                         <p className="text-xs text-gray-600 mt-0.5">
                           {user.phone ?? "—"}
                         </p>
                       </td>
-
-                      {/* Role */}
                       <td className="px-5 py-4">
                         <span
                           className={`px-2.5 py-1 text-xs font-bold rounded-lg ${user.role?.name === "ADMIN" ? "bg-violet-500/15 text-violet-400" : "bg-indigo-500/10 text-indigo-400"}`}
@@ -892,8 +909,6 @@ export default function UserManagement() {
                           {user.role?.name ?? "USER"}
                         </span>
                       </td>
-
-                      {/* Status */}
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full ${user.status === "ACTIVE" ? "bg-emerald-500/10 text-emerald-400" : user.status === "BANNED" ? "bg-red-500/10 text-red-400" : "bg-yellow-500/10 text-yellow-400"}`}
@@ -908,8 +923,6 @@ export default function UserManagement() {
                               : "Chờ xác nhận"}
                         </span>
                       </td>
-
-                      {/* Tasks — clickable */}
                       <td className="px-5 py-4">
                         <button
                           onClick={() => setTaskDrawerUser(user)}
@@ -923,8 +936,6 @@ export default function UserManagement() {
                           {user._count?.tasks ?? 0}
                         </button>
                       </td>
-
-                      {/* Actions */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-1 justify-end opacity-60 group-hover:opacity-100 transition-opacity">
                           <button

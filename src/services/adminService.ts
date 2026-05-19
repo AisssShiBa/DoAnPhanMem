@@ -50,11 +50,25 @@ export interface DefaultTag {
   color_code: string | null;
 }
 
+// Backend trả về history là mảng object flat (không wrap trong `user`)
 export interface NotifHistoryItem {
   id: number;
-  action: string | null;
+  action: string;
   created_at: string;
-  user: { full_name: string | null; email: string } | null;
+  user?: {
+    full_name?: string;
+    email?: string;
+  };
+}
+
+export interface UserTaskStats {
+  total: number;
+  done: number;
+  inProgress: number;
+  todo: number;
+  completionRate: number;
+  recentTasks: { title: string; status: string; due: string | null }[];
+  categories: { name: string; color: string; count: number }[];
 }
 
 export interface Pagination {
@@ -111,6 +125,12 @@ export const adminService = {
 
   deleteUser: async (id: number): Promise<{ message: string }> => {
     const res = await api.delete(`/admin/users/${id}`);
+    return res.data;
+  },
+
+  // User Task Stats (for admin drawer)
+  getUserTaskStats: async (id: number): Promise<UserTaskStats> => {
+    const res = await api.get(`/admin/users/${id}/task-stats`);
     return res.data;
   },
 
