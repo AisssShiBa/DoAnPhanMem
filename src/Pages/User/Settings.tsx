@@ -129,7 +129,7 @@ function Toggle({
     <button
       type="button"
       onClick={onChange}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none shrink-0 ${
         checked ? "bg-indigo-500" : "bg-slate-200"
       }`}
     >
@@ -187,7 +187,7 @@ function DeviceIcon({ type }: { type: "desktop" | "mobile" | "laptop" }) {
 }
 
 /* ==================================================
-   PROFILE TAB — display card + edit form
+   PROFILE TAB
 ================================================== */
 function ProfileTab({
   profile,
@@ -205,6 +205,7 @@ function ProfileTab({
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [error, setError] = useState("");
   const [notifSaving, setNotifSaving] = useState(false);
+
   const handleEdit = () => {
     setDraft(profile);
     setEditing(true);
@@ -242,25 +243,24 @@ function ProfileTab({
       ...settings,
       notification_enabled: !settings.notification_enabled,
     };
-    setSettings(next); // optimistic update
+    setSettings(next);
     setNotifSaving(true);
     try {
       await api.put("/profile/settings", next);
     } catch {
-      setSettings(settings); // revert nếu lỗi
+      setSettings(settings);
     } finally {
       setNotifSaving(false);
     }
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Profile display card */}
       {!editing ? (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          {/* Hero strip */}
           <div className="h-20 bg-linear-to-r from-indigo-500 via-violet-500 to-purple-500 relative">
-            <div className="absolute -bottom-8 left-6">
+            <div className="absolute -bottom-8 left-5">
               <div className="w-16 h-16 rounded-2xl bg-white shadow-md flex items-center justify-center border-2 border-white">
                 <span className="text-xl font-bold text-indigo-600 tracking-tight">
                   {initials(profile.full_name) || "?"}
@@ -269,29 +269,30 @@ function ProfileTab({
             </div>
           </div>
 
-          <div className="pt-10 pb-5 px-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800">
+          <div className="pt-10 pb-5 px-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-slate-800 truncate">
                   {profile.full_name || (
                     <span className="text-slate-300 font-normal italic">
                       Chưa đặt tên
                     </span>
                   )}
                 </h2>
-                <p className="text-sm text-slate-400 mt-0.5">
+                <p className="text-sm text-slate-400 mt-0.5 truncate">
                   {profile.major || "Chưa có chuyên ngành"}
                 </p>
               </div>
               <button
                 onClick={handleEdit}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl border border-indigo-200 text-indigo-500 hover:bg-indigo-50 transition font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl border border-indigo-200 text-indigo-500 hover:bg-indigo-50 transition font-medium shrink-0"
               >
                 <Pencil size={11} /> Chỉnh sửa
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            {/* 1 col on very small screens, 2 col on sm+ */}
+            <div className="mt-4 grid grid-cols-1 xs:grid-cols-2 gap-3">
               {[
                 {
                   icon: <Phone size={13} />,
@@ -323,9 +324,9 @@ function ProfileTab({
       ) : (
         /* Edit form */
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
                 <User size={15} className="text-indigo-600" />
               </div>
               <div>
@@ -338,7 +339,8 @@ function ProfileTab({
               </div>
             </div>
           </div>
-          <form onSubmit={handleSubmit} className="p-6">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6">
+            {/* single col on mobile, 2 col on sm+ */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[
                 {
@@ -381,7 +383,7 @@ function ProfileTab({
                         setDraft({ ...draft, [key]: e.target.value })
                       }
                       placeholder={placeholder}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-300 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                     />
                   </div>
                 </div>
@@ -407,24 +409,24 @@ function ProfileTab({
       )}
 
       {/* Notification preference */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 sm:px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
               <Bell size={15} className="text-amber-500" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-slate-800">
                 Nhắc nhở deadline
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">
                 {settings.notification_enabled
-                  ? "Đang bật — sẽ nhận email khi sắp đến hạn"
+                  ? "Đang bật — nhận email khi sắp đến hạn"
                   : "Đã tắt — không nhận email nhắc nhở"}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {notifSaving && (
               <RefreshCw size={12} className="animate-spin text-slate-400" />
             )}
@@ -440,7 +442,7 @@ function ProfileTab({
 }
 
 /* ==================================================
-   SECURITY TAB — password change
+   SECURITY TAB
 ================================================== */
 function SecurityTab() {
   const [form, setForm] = useState({ current: "", next: "", confirm: "" });
@@ -511,8 +513,8 @@ function SecurityTab() {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-50">
-        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-50">
+        <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
           <Lock size={15} className="text-amber-600" />
         </div>
         <div>
@@ -522,7 +524,7 @@ function SecurityTab() {
           </p>
         </div>
       </div>
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
         {fields.map(({ key, label, placeholder, show, toggle }) => (
           <div key={key}>
             <label className="block text-[11px] font-semibold tracking-widest text-slate-400 uppercase mb-2">
@@ -540,13 +542,13 @@ function SecurityTab() {
                   setForm((prev) => ({ ...prev, [key]: e.target.value }))
                 }
                 placeholder={placeholder}
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border text-black border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                className="w-full pl-10 pr-10 py-3 bg-slate-50 border text-black border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
               />
               {(key === "current" || key === "next") && (
                 <button
                   type="button"
                   onClick={toggle}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                 >
                   {show ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
@@ -612,9 +614,10 @@ function SessionsTab({
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-50">
+      {/* Header — wraps on mobile */}
+      <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-50 flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
             <ShieldCheck size={15} className="text-rose-600" />
           </div>
           <div>
@@ -627,12 +630,12 @@ function SessionsTab({
           </div>
         </div>
         {confirmLogoutAll ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-slate-500">Đăng xuất tất cả?</span>
             <button
               onClick={handleLogoutAll}
               disabled={logoutAllLoading}
-              className="px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition disabled:opacity-60 min-w-15 text-center"
+              className="px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition disabled:opacity-60 min-w-16 text-center"
             >
               {logoutAllLoading ? (
                 <RefreshCw size={12} className="animate-spin mx-auto" />
@@ -657,7 +660,7 @@ function SessionsTab({
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-3 sm:p-4">
         {loading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
@@ -684,7 +687,7 @@ function SessionsTab({
               return (
                 <div
                   key={s.id}
-                  className={`flex items-center gap-3.5 p-3.5 rounded-xl border transition-all ${
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     s.is_current
                       ? "border-indigo-200 bg-indigo-50/60"
                       : "border-slate-100 hover:border-slate-200 hover:bg-slate-50/80"
@@ -710,7 +713,8 @@ function SessionsTab({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    {/* Stack meta on mobile */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
                       <span className="flex items-center gap-1 text-[11px] text-slate-400">
                         <Monitor size={10} /> {os}
                       </span>
@@ -729,7 +733,7 @@ function SessionsTab({
                     <button
                       onClick={() => handleRevoke(s.id)}
                       disabled={revoking === s.id}
-                      className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                      className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg border border-slate-200 text-slate-400 hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition disabled:opacity-50 min-h-9"
                     >
                       {revoking === s.id ? (
                         <RefreshCw size={11} className="animate-spin" />
@@ -748,7 +752,7 @@ function SessionsTab({
         {!loading && sessions.length > 0 && (
           <button
             onClick={onRefresh}
-            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 text-xs text-slate-400 hover:text-indigo-500 transition rounded-xl hover:bg-indigo-50"
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 text-xs text-slate-400 hover:text-indigo-500 transition rounded-xl hover:bg-indigo-50"
           >
             <RefreshCw size={11} /> Làm mới danh sách
           </button>
@@ -759,7 +763,7 @@ function SessionsTab({
 }
 
 /* ==================================================
-   MAIN
+   TAB CONFIG
 ================================================== */
 const TABS: { id: Tab; label: string; icon: React.ReactNode; desc: string }[] =
   [
@@ -783,6 +787,9 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode; desc: string }[] =
     },
   ];
 
+/* ==================================================
+   MAIN
+================================================== */
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<Tab>("profile");
   const [profile, setProfile] = useState<ProfileData>({
@@ -850,15 +857,15 @@ export default function Settings() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="min-h-screen bg-slate-50 px-3 sm:px-4 py-6 sm:py-8">
       <div className="max-w-3xl mx-auto">
         {/* Page header */}
-        <div className="mb-6 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-200 shrink-0">
             <SettingsIcon size={16} className="text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">
               Cài đặt
             </h1>
             <p className="text-xs text-slate-400">
@@ -867,42 +874,47 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="flex gap-5">
-          {/* Sidebar tabs */}
-          <div className="w-48 shrink-0 space-y-1">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all group ${
-                  activeTab === t.id
-                    ? "bg-white border border-slate-200 shadow-sm text-indigo-600"
-                    : "text-slate-500 hover:bg-white hover:text-slate-700 hover:shadow-sm hover:border hover:border-slate-100"
-                }`}
-              >
-                <span
-                  className={`shrink-0 ${activeTab === t.id ? "text-indigo-500" : "text-slate-400 group-hover:text-slate-500"}`}
+        {/* On mobile: horizontal scrollable tab bar. On sm+: sidebar layout */}
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
+          {/* Tabs */}
+          <div className="sm:w-48 sm:shrink-0">
+            {/* Mobile: horizontal scroll row */}
+            <div className="flex sm:flex-col gap-1 overflow-x-auto pb-1 sm:pb-0 -mx-3 px-3 sm:mx-0 sm:px-0">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`shrink-0 sm:w-full flex items-center gap-2 sm:gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all group whitespace-nowrap ${
+                    activeTab === t.id
+                      ? "bg-white border border-slate-200 shadow-sm text-indigo-600"
+                      : "text-slate-500 hover:bg-white hover:text-slate-700 hover:shadow-sm hover:border hover:border-slate-100"
+                  }`}
                 >
-                  {t.icon}
-                </span>
-                <div className="min-w-0">
-                  <p
-                    className={`text-sm font-semibold truncate ${activeTab === t.id ? "text-indigo-700" : ""}`}
+                  <span
+                    className={`shrink-0 ${activeTab === t.id ? "text-indigo-500" : "text-slate-400 group-hover:text-slate-500"}`}
                   >
-                    {t.label}
-                  </p>
-                  <p className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">
-                    {t.desc}
-                  </p>
-                </div>
-                {activeTab === t.id && (
-                  <ChevronRight
-                    size={12}
-                    className="ml-auto text-indigo-400 shrink-0"
-                  />
-                )}
-              </button>
-            ))}
+                    {t.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm font-semibold ${activeTab === t.id ? "text-indigo-700" : ""}`}
+                    >
+                      {t.label}
+                    </p>
+                    {/* Hide desc on mobile horizontal tab bar */}
+                    <p className="text-[10px] text-slate-400 truncate leading-tight mt-0.5 hidden sm:block">
+                      {t.desc}
+                    </p>
+                  </div>
+                  {activeTab === t.id && (
+                    <ChevronRight
+                      size={12}
+                      className="ml-auto text-indigo-400 shrink-0 hidden sm:block"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Content panel */}
@@ -927,7 +939,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-300 mt-6 pb-4">
+        <p className="text-center text-xs text-slate-300 mt-6 pb-4 px-2">
           Dữ liệu tài khoản được bảo mật và mã hóa. Nếu bạn thấy thiết bị lạ,
           hãy thu hồi ngay.
         </p>
