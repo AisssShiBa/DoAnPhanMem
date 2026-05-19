@@ -29,9 +29,14 @@ interface NotifDisplay {
 
 const parseLogToDisplay = (item: NotifHistoryItem): NotifDisplay => {
   const action = item.action ?? "";
+
+  // Format: BROADCAST "Tiêu đề" → 9 users
+  const titleMatch = action.match(/BROADCAST\s+"(.+?)"\s+→/);
+  const countMatch = action.match(/→\s+(\d+)\s+users/);
+
+  // Type không có trong action string → mặc định INFO
+  // Nếu backend sau này thêm type thì parse ở đây
   const typeMatch = action.match(/\[(INFO|WARNING|MAINTENANCE)\]/);
-  const titleMatch = action.match(/:\s*"(.+?)"\s*đến/);
-  const countMatch = action.match(/đến (\d+) người/);
 
   return {
     id: item.id,
@@ -45,7 +50,7 @@ const parseLogToDisplay = (item: NotifHistoryItem): NotifDisplay => {
       minute: "2-digit",
     }),
     reach_count: Number(countMatch?.[1] ?? 0),
-    sender: item.user?.full_name ?? item.user?.email ?? "Admin",
+    sender: item.user_name ?? item.user_email ?? "Admin", // ← dùng user_name thay vì item.user
   };
 };
 

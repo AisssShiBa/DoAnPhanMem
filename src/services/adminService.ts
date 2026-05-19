@@ -50,15 +50,14 @@ export interface DefaultTag {
   color_code: string | null;
 }
 
-// Backend trả về history là mảng object flat (không wrap trong `user`)
 export interface NotifHistoryItem {
   id: number;
   action: string;
+  action_type: string;
   created_at: string;
-  user?: {
-    full_name?: string;
-    email?: string;
-  };
+  user_name?: string;
+  user_email?: string;
+  role?: string;
 }
 
 export interface UserTaskStats {

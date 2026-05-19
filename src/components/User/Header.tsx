@@ -10,6 +10,7 @@ import {
   Bell,
   X,
   CheckCheck,
+  Menu,
 } from "lucide-react";
 import api from "../../lib/axios";
 import {
@@ -40,12 +41,13 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
   const location = useLocation();
 
   const [showNotif, setShowNotif] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch notifications
   const fetchNotifications = async () => {
     try {
       const res = await notificationService.getAll();
@@ -56,7 +58,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
     }
   };
 
-  // Poll mỗi 60 giây
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
@@ -64,7 +65,7 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
     return () => clearInterval(interval);
   }, []);
 
-  // Đóng dropdown khi click ngoài
+  // Đóng dropdown/menu khi click ngoài
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -73,13 +74,39 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
       ) {
         setShowNotif(false);
       }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowMobileMenu(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Đóng mobile menu khi chuyển trang
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowMobileMenu(false);
+    setShowNotif(false);
+  }, [location.pathname]);
+
+  // Khóa scroll body khi mobile menu mở
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showMobileMenu]);
+
   const handleOpenNotif = async () => {
     setShowNotif((prev) => !prev);
+    setShowMobileMenu(false);
     if (!showNotif) await fetchNotifications();
   };
 
@@ -100,11 +127,12 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
   };
 
   const handleNavigate = async (page: string) => {
+    setShowMobileMenu(false);
     if (page === "logout") {
       try {
         await api.post("/auth/logout");
-        // eslint-disable-next-line no-empty
       } catch {
+        // ignore
       } finally {
         localStorage.removeItem("token");
         navigate("/login");
@@ -140,14 +168,14 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
         {/* Logo */}
         <Link to="/user" className="flex items-center gap-2 shrink-0">
-          <img src={logo} alt="Logo" className="w-25 h-auto object-contain" />
+          <img src={logo} alt="Logo" className="w-24 h-auto object-contain" />
         </Link>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-1">
+        {/* Nav — ẩn trên mobile */}
+        <nav className="hidden md:flex items-center gap-1">
           {navItems.map(({ key, label, icon: Icon, path }) => {
             const active = location.pathname === path;
             return (
@@ -169,7 +197,7 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
 
         {/* Right actions */}
         <div className="flex items-center gap-1">
-          {/* ── Chuông thông báo ── */}
+          {/* Chuông thông báo */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={handleOpenNotif}
@@ -184,10 +212,8 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
               )}
             </button>
 
-            {/* Dropdown */}
             {showNotif && (
-              <div className="absolute right-0 top-11 w-80 bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50">
-                {/* Header dropdown */}
+              <div className="absolute right-0 top-11 w-80 max-w-[calc(100vw-1rem)] bg-white rounded-2xl border border-gray-100 shadow-xl overflow-hidden z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <h3 className="font-bold text-gray-800 text-sm">
                     Thông báo
@@ -203,7 +229,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
                         onClick={handleMarkAllAsRead}
                         disabled={loading}
                         className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition"
-                        title="Đánh dấu tất cả đã đọc"
                       >
                         <CheckCheck size={13} />
                         Đọc tất cả
@@ -218,8 +243,7 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
                   </div>
                 </div>
 
-                {/* List */}
-                <div className="max-h-80 overflow-y-auto">
+                <div className="max-h-72 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="py-10 text-center text-gray-400">
                       <Bell size={28} className="mx-auto mb-2 opacity-30" />
@@ -265,9 +289,10 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
             )}
           </div>
 
+          {/* Settings — ẩn trên mobile (có trong menu) */}
           <button
             onClick={() => handleNavigate("settings")}
-            className={`p-2 rounded-lg transition cursor-pointer ${
+            className={`hidden md:flex p-2 rounded-lg transition cursor-pointer ${
               location.pathname === "/user/settings"
                 ? "bg-blue-50 text-blue-600"
                 : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
@@ -277,15 +302,102 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
             <Settings size={18} />
           </button>
 
+          {/* Logout — ẩn trên mobile */}
           <button
             onClick={() => handleNavigate("logout")}
-            className="flex items-center cursor-pointer gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition ml-1"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition ml-1 cursor-pointer"
           >
             <LogOut size={15} />
             Đăng xuất
           </button>
+
+          {/* Hamburger — chỉ hiện trên mobile */}
+          <button
+            onClick={() => {
+              setShowMobileMenu((v) => !v);
+              setShowNotif(false);
+            }}
+            className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition"
+            aria-label="Mở menu"
+          >
+            {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu overlay */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 z-40 md:hidden">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowMobileMenu(false)}
+          />
+
+          {/* Drawer từ phải */}
+          <div
+            ref={mobileMenuRef}
+            className="absolute top-0 right-0 h-full w-64 bg-white shadow-2xl flex flex-col"
+          >
+            {/* Drawer header */}
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+              <span className="font-bold text-gray-800">Menu</span>
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Nav items */}
+            <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+              {navItems.map(({ key, label, icon: Icon, path }) => {
+                const active = location.pathname === path;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleNavigate(key)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-left ${
+                      active
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Icon size={18} />
+                    {label}
+                  </button>
+                );
+              })}
+
+              <div className="border-t border-gray-100 my-2 pt-2">
+                <button
+                  onClick={() => handleNavigate("settings")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition text-left ${
+                    location.pathname === "/user/settings"
+                      ? "bg-blue-50 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <Settings size={18} />
+                  Cài đặt
+                </button>
+              </div>
+            </div>
+
+            {/* Logout ở dưới */}
+            <div className="px-3 py-4 border-t border-gray-100">
+              <button
+                onClick={() => handleNavigate("logout")}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition"
+              >
+                <LogOut size={18} />
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
