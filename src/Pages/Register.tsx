@@ -179,7 +179,7 @@ export default function Register() {
           <form onSubmit={handleRegister} className="space-y-4">
             {/* Họ tên */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Họ và tên
               </label>
               <input
@@ -195,7 +195,7 @@ export default function Register() {
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Email
               </label>
               <input
