@@ -42,23 +42,6 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 
 // Kiểm tra độ mạnh mật khẩu
-function getPasswordStrength(pw: string): {
-  score: number;
-  label: string;
-  color: string;
-} {
-  if (!pw) return { score: 0, label: "", color: "" };
-  let score = 0;
-  if (pw.length >= 8) score++;
-  if (pw.length >= 12) score++;
-  if (/[A-Z]/.test(pw)) score++;
-  if (/[0-9]/.test(pw)) score++;
-  if (/[^A-Za-z0-9]/.test(pw)) score++;
-  if (score <= 1) return { score, label: "Yếu", color: "bg-red-500" };
-  if (score <= 2) return { score, label: "Trung bình", color: "bg-yellow-500" };
-  if (score <= 3) return { score, label: "Khá", color: "bg-blue-500" };
-  return { score, label: "Mạnh", color: "bg-emerald-500" };
-}
 
 export default function Register() {
   const [name, setName] = useState("");
@@ -70,8 +53,6 @@ export default function Register() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
-
-  const strength = getPasswordStrength(password);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,7 +192,7 @@ export default function Register() {
 
             {/* Mật khẩu */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Mật khẩu
               </label>
               <div className="relative">
@@ -235,78 +216,11 @@ export default function Register() {
                   <EyeIcon open={showPassword} />
                 </button>
               </div>
-
-              {/* Thanh độ mạnh */}
-              {password && (
-                <div className="mt-2">
-                  <div className="flex gap-1 mb-1">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                          strength.score >= i ? strength.color : "bg-white/10"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <p
-                    className={`text-xs ${
-                      strength.score <= 1
-                        ? "text-red-400"
-                        : strength.score <= 2
-                          ? "text-yellow-400"
-                          : strength.score <= 3
-                            ? "text-blue-400"
-                            : "text-emerald-400"
-                    }`}
-                  >
-                    Độ mạnh: {strength.label}
-                  </p>
-                </div>
-              )}
-
-              {/* Gợi ý mật khẩu — sát trái */}
-              <div className="mt-2 space-y-1">
-                {[
-                  { check: password.length >= 8, text: "Ít nhất 8 ký tự" },
-                  { check: /[A-Z]/.test(password), text: "Có chữ hoa (A-Z)" },
-                  { check: /[0-9]/.test(password), text: "Có chữ số (0-9)" },
-                  {
-                    check: /[^A-Za-z0-9]/.test(password),
-                    text: "Có ký tự đặc biệt (!@#...)",
-                  },
-                ].map(({ check, text }) => (
-                  <div key={text} className="flex items-center gap-1.5">
-                    <svg
-                      className={`w-3 h-3 shrink-0 transition-colors ${check ? "text-emerald-400" : "text-gray-600"}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      {check ? (
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={3}
-                          d="M5 13l4 4L19 7"
-                        />
-                      ) : (
-                        <circle cx="12" cy="12" r="9" strokeWidth={2} />
-                      )}
-                    </svg>
-                    <span
-                      className={`text-xs transition-colors ${check ? "text-emerald-400" : "text-gray-600"}`}
-                    >
-                      {text}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* Xác nhận mật khẩu */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Xác nhận mật khẩu
               </label>
               <div className="relative">
