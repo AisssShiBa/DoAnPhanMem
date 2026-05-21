@@ -28,11 +28,15 @@ import {
   Image,
   File,
   Shield,
+  BarChart3,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import api from "../../lib/axios";
 import { Link } from "react-router-dom";
+
 /* =====================================================
    TYPES
 ===================================================== */
@@ -100,6 +104,7 @@ interface ApiError {
 
 type SortField = "created_at" | "due_date" | "priority" | "title";
 type FilterStatus = "all" | "todo" | "done" | "overdue";
+type MobileTab = "tasks" | "categories" | "stats" | "settings";
 
 /* =====================================================
    CONSTANTS
@@ -146,10 +151,10 @@ const REMINDER_PRESETS = [
   { label: "1 ngày", minutes: 1440 },
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 /* =====================================================
-   CREATE NEW TAG FUNCTION
+   HELPERS
 ===================================================== */
 async function createNewTag(name: string): Promise<TagItem | null> {
   try {
@@ -161,70 +166,6 @@ async function createNewTag(name: string): Promise<TagItem | null> {
   }
 }
 
-/* =====================================================
-   NEW TAG BUTTON COMPONENT
-===================================================== */
-function NewTagButton({ onCreated }: { onCreated: (tag: TagItem) => void }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleCreate() {
-    if (!name.trim()) return;
-    setLoading(true);
-    const newTag = await createNewTag(name.trim());
-    if (newTag) {
-      onCreated(newTag);
-      setName("");
-      setIsOpen(false);
-    }
-    setLoading(false);
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="px-4 py-2 text-xs font-medium border border-dashed border-indigo-200 rounded-xl hover:bg-indigo-50 text-indigo-600 flex items-center gap-1 transition"
-      >
-        <Plus size={14} /> Tạo tag mới
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-200 bg-black/60 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl">
-            <h3 className="font-bold text-black text-lg mb-4">Tạo tag mới</h3>
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              placeholder="Tên tag (ví dụ: urgent, homework...)"
-              className="w-full px-4 py-3 text-black border border-gray-200 rounded-xl text-sm mb-4 focus:border-indigo-400 outline-none"
-            />
-            <div className="flex gap-2">
-              {/* ✅ Fix: nút Hủy dùng style khác với nút Tạo tag */}
-              <button
-                onClick={() => setIsOpen(false)}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!name.trim() || loading}
-                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium disabled:opacity-50"
-              >
-                {loading ? "Đang tạo..." : "Tạo tag"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
 function formatDate(d: string | null, short = false) {
   if (!d) return null;
   const date = new Date(d);
@@ -287,6 +228,69 @@ function getFileIcon(mimeType: string) {
 }
 
 /* =====================================================
+   NEW TAG BUTTON
+===================================================== */
+function NewTagButton({ onCreated }: { onCreated: (tag: TagItem) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleCreate() {
+    if (!name.trim()) return;
+    setLoading(true);
+    const newTag = await createNewTag(name.trim());
+    if (newTag) {
+      onCreated(newTag);
+      setName("");
+      setIsOpen(false);
+    }
+    setLoading(false);
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        className="px-4 py-2 text-xs font-medium border border-dashed border-indigo-200 rounded-xl hover:bg-indigo-50 text-indigo-600 flex items-center gap-1 transition"
+      >
+        <Plus size={14} /> Tạo tag mới
+      </button>
+      {isOpen && (
+        <div className="fixed inset-0 z-200 bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-xs shadow-2xl">
+            <h3 className="font-bold text-black text-lg mb-4">Tạo tag mới</h3>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              placeholder="Tên tag (ví dụ: urgent, homework...)"
+              className="w-full px-4 py-3 text-black border border-gray-200 rounded-xl text-sm mb-4 focus:border-indigo-400 outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsOpen(false)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-200 transition"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleCreate}
+                disabled={!name.trim() || loading}
+                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-medium disabled:opacity-50"
+              >
+                {loading ? "Đang tạo..." : "Tạo tag"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* =====================================================
    CONFIRM DIALOG
 ===================================================== */
 function ConfirmDialog({
@@ -299,7 +303,7 @@ function ConfirmDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-gray-100">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2.5 bg-red-50 rounded-xl">
@@ -368,7 +372,7 @@ function CategoryModal({
   }
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-bold text-gray-900">
@@ -466,7 +470,7 @@ function TaskModal({
   const [error, setError] = useState("");
 
   const [pendingReminders, setPendingReminders] = useState<Date[]>([]);
-  const pendingRemindersRef = useRef<Date[]>([]); // ✅ ref tránh stale closure
+  const pendingRemindersRef = useRef<Date[]>([]);
   const [reminderInput, setReminderInput] = useState<Date | null>(null);
   const [reminderError, setReminderError] = useState("");
 
@@ -480,7 +484,6 @@ function TaskModal({
   const [fileError, setFileError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Sync ref mỗi khi pendingReminders thay đổi
   useEffect(() => {
     pendingRemindersRef.current = pendingReminders;
   }, [pendingReminders]);
@@ -536,7 +539,6 @@ function TaskModal({
 
   function addReminderToList() {
     if (!reminderInput) return;
-    // ✅ Bỏ validate "đã qua" ở client, để server quyết định (có buffer 60s)
     if (pendingReminders.some((r) => r.getTime() === reminderInput.getTime())) {
       setReminderError("Thời gian này đã có");
       return;
@@ -565,8 +567,6 @@ function TaskModal({
       return;
     }
     setLoading(true);
-
-    // ✅ Đọc từ ref thay vì state để tránh stale closure
     const remindersToPost = pendingRemindersRef.current;
 
     try {
@@ -582,8 +582,6 @@ function TaskModal({
       if (initial) {
         await api.patch(`/tasks/${initial.id}`, payload);
         taskId = initial.id;
-
-        // Xóa reminder pending cũ trước khi tạo mới
         try {
           const existingRes = await api.get(`/tasks/${taskId}/reminders`);
           const pendingOld = (existingRes.data.reminders as Reminder[]).filter(
@@ -601,7 +599,6 @@ function TaskModal({
         taskId = res.data.task.id;
       }
 
-      // Tags
       if (selectedTagIds.length > 0) {
         await Promise.all(
           selectedTagIds.map((tagId) =>
@@ -610,7 +607,6 @@ function TaskModal({
         );
       }
 
-      // ✅ Dùng remindersToPost (từ ref) thay vì pendingReminders (state)
       if (remindersToPost.length > 0) {
         await Promise.allSettled(
           remindersToPost.map((r) =>
@@ -619,11 +615,7 @@ function TaskModal({
                 remind_time: r.toISOString(),
               })
               .catch((err) =>
-                console.error(
-                  "Reminder POST failed:",
-                  err.response?.data,
-                  r.toISOString(),
-                ),
+                console.error("Reminder POST failed:", err.response?.data),
               ),
           ),
         );
@@ -647,14 +639,16 @@ function TaskModal({
   }
 
   return (
-    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+    <div className="fixed inset-0 z-100 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl border border-gray-100 overflow-hidden max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
+          {/* drag handle on mobile */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-2 w-9 h-1 bg-gray-200 rounded-full sm:hidden" />
           <h2 className="text-lg font-bold text-gray-900">
             {initial ? "Chỉnh sửa công việc" : "Thêm công việc mới"}
           </h2>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-lg font-mono">
+            <span className="hidden sm:inline text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-lg font-mono">
               Ctrl+N
             </span>
             <button
@@ -666,7 +660,8 @@ function TaskModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          {/* Title */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
               Tiêu đề *
@@ -687,6 +682,7 @@ function TaskModal({
             {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
           </div>
 
+          {/* Description */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
               Ghi chú
@@ -700,7 +696,8 @@ function TaskModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Deadline + Priority */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                 Deadline
@@ -734,6 +731,7 @@ function TaskModal({
             </div>
           </div>
 
+          {/* Category */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
               Danh sách
@@ -754,7 +752,7 @@ function TaskModal({
             </select>
           </div>
 
-          {/* TAGS SECTION */}
+          {/* Tags */}
           <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/60">
             <div className="flex items-center gap-2 mb-3">
               <Tag size={13} className="text-indigo-500 shrink-0" />
@@ -767,7 +765,6 @@ function TaskModal({
                 </span>
               )}
             </div>
-
             {selectedTagIds.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
                 {allTags
@@ -793,7 +790,6 @@ function TaskModal({
                   ))}
               </div>
             )}
-
             <div className="flex gap-2">
               <button
                 type="button"
@@ -809,7 +805,6 @@ function TaskModal({
                 }}
               />
             </div>
-
             {showTagPicker && (
               <div className="mt-3 border border-gray-200 rounded-xl bg-white p-1.5 max-h-52 overflow-y-auto">
                 {allTags.map((tag) => {
@@ -818,11 +813,7 @@ function TaskModal({
                     <button
                       key={tag.id}
                       onClick={() => toggleTag(tag.id)}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${
-                        isSelected
-                          ? "bg-indigo-50 border border-indigo-100"
-                          : "hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition ${isSelected ? "bg-indigo-50 border border-indigo-100" : "hover:bg-gray-50"}`}
                     >
                       <div
                         className="w-2 h-2 rounded-full shrink-0"
@@ -847,7 +838,7 @@ function TaskModal({
             )}
           </div>
 
-          {/* FILE ATTACHMENT SECTION */}
+          {/* File Attachments */}
           <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/60">
             <div className="flex items-center gap-2 mb-3">
               <Paperclip size={13} className="text-green-500 shrink-0" />
@@ -858,7 +849,6 @@ function TaskModal({
                 Tối đa 10MB/file
               </span>
             </div>
-
             {pendingFiles.length > 0 && (
               <div className="space-y-1.5 mb-3">
                 {pendingFiles.map((f, i) => (
@@ -884,11 +874,9 @@ function TaskModal({
                 ))}
               </div>
             )}
-
             {fileError && (
               <p className="text-xs text-red-500 mb-2">{fileError}</p>
             )}
-
             <input
               ref={fileInputRef}
               type="file"
@@ -906,7 +894,7 @@ function TaskModal({
             </label>
           </div>
 
-          {/* REMINDER SECTION */}
+          {/* Reminders */}
           <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50/60">
             <div className="flex items-center gap-2 mb-3">
               <Bell size={13} className="text-blue-500 shrink-0" />
@@ -919,7 +907,6 @@ function TaskModal({
                 </span>
               )}
             </div>
-
             {pendingReminders.length > 0 && (
               <div className="space-y-1.5 mb-3">
                 {pendingReminders.map((r, i) => (
@@ -948,7 +935,6 @@ function TaskModal({
                 ))}
               </div>
             )}
-
             <div className="flex gap-2 items-center">
               <DatePicker
                 selected={reminderInput}
@@ -976,7 +962,6 @@ function TaskModal({
             {reminderError && (
               <p className="text-xs text-red-500 mt-1.5">{reminderError}</p>
             )}
-
             <div className="mt-2.5">
               {dueDate ? (
                 <div className="flex gap-1.5 flex-wrap items-center">
@@ -1006,7 +991,7 @@ function TaskModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 bg-gray-50 border-t border-gray-100 shrink-0">
+        <div className="flex justify-end gap-2 px-5 py-4 bg-gray-50 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
             className="px-5 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm hover:bg-white font-medium"
@@ -1133,6 +1118,8 @@ function SubtaskItem({
 
 /* =====================================================
    TASK DETAIL PANEL INNER
+   - Desktop: panel bên phải
+   - Mobile: bottom sheet full screen
 ===================================================== */
 function TaskDetailPanelInner({
   task,
@@ -1165,7 +1152,6 @@ function TaskDetailPanelInner({
 
   const [allTags, setAllTags] = useState<TagItem[]>([]);
   const [tagLoading, setTagLoading] = useState(false);
-  // ✅ Fix: thêm setter cho showTagPicker
   const [showTagPicker, setShowTagPicker] = useState(false);
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(
@@ -1213,7 +1199,6 @@ function TaskDetailPanelInner({
     setFileError("");
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
     for (const f of files) {
       if (f.size > MAX_FILE_SIZE) {
         setFileError(`"${f.name}" vượt quá 10MB`);
@@ -1221,7 +1206,6 @@ function TaskDetailPanelInner({
         return;
       }
     }
-
     setUploadingFile(true);
     try {
       const formData = new FormData();
@@ -1376,10 +1360,10 @@ function TaskDetailPanelInner({
     (r) => r.status === "pending",
   ).length;
 
-  return (
-    <div className="flex flex-col h-full bg-white border-l border-gray-100 w-90 shrink-0 overflow-hidden">
+  const panelContent = (
+    <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
         <div className="flex items-center gap-2">
           <button
             onClick={() => patchTask({ status: isDone ? "todo" : "done" })}
@@ -1451,7 +1435,7 @@ function TaskDetailPanelInner({
           )}
         </div>
 
-        {/* Priority + Category + Task Tags badges */}
+        {/* Badges */}
         <div className="px-5 pb-4 flex flex-wrap gap-1.5">
           {prio && (
             <span
@@ -1486,7 +1470,7 @@ function TaskDetailPanelInner({
           ))}
         </div>
 
-        {/* Meta info */}
+        {/* Meta */}
         <div className="px-5 space-y-1 pb-4">
           <div
             className={`flex items-center gap-3 py-2.5 rounded-xl px-3 ${overdue ? "bg-red-50" : "hover:bg-gray-50"} transition`}
@@ -1508,12 +1492,11 @@ function TaskDetailPanelInner({
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-3 py-2.5 rounded-xl px-3 hover:bg-gray-50 transition">
             <Flag size={15} className="text-gray-400" />
             <div className="flex-1">
               <p className="text-xs text-gray-400 font-medium">Mức ưu tiên</p>
-              <div className="flex gap-1.5 mt-1">
+              <div className="flex gap-1.5 mt-1 flex-wrap">
                 {[1, 2, 3].map((p) => (
                   <button
                     key={p}
@@ -1526,7 +1509,6 @@ function TaskDetailPanelInner({
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-3 py-2.5 rounded-xl px-3 hover:bg-gray-50 transition">
             <FolderOpen size={15} className="text-gray-400" />
             <div className="flex-1">
@@ -1549,7 +1531,6 @@ function TaskDetailPanelInner({
               </select>
             </div>
           </div>
-
           {localTask.created_at && (
             <div className="flex items-center gap-3 py-2 px-3">
               <Clock size={15} className="text-gray-300" />
@@ -1562,11 +1543,9 @@ function TaskDetailPanelInner({
 
         {/* Ghi chú */}
         <div className="px-5 pb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              Ghi chú
-            </p>
-          </div>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+            Ghi chú
+          </p>
           {editDesc ? (
             <div>
               <textarea
@@ -1614,7 +1593,7 @@ function TaskDetailPanelInner({
           )}
         </div>
 
-        {/* TAGS */}
+        {/* Tags */}
         <div className="px-5 pb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
@@ -1624,7 +1603,6 @@ function TaskDetailPanelInner({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {/* ✅ Fix: thêm nút toggle showTagPicker */}
               <button
                 type="button"
                 onClick={() => setShowTagPicker((v) => !v)}
@@ -1640,7 +1618,6 @@ function TaskDetailPanelInner({
               />
             </div>
           </div>
-
           <div className="flex flex-wrap gap-1.5 mb-2">
             {localTask.task_tags.length === 0 && !showTagPicker && (
               <p className="text-xs text-gray-400 italic px-1">
@@ -1666,7 +1643,6 @@ function TaskDetailPanelInner({
               </span>
             ))}
           </div>
-
           {showTagPicker && (
             <div className="border border-gray-100 rounded-xl bg-gray-50 p-2 space-y-0.5">
               {allTags.map((tag) => {
@@ -1682,11 +1658,7 @@ function TaskDetailPanelInner({
                         : handleAddTag(tag.id)
                     }
                     disabled={tagLoading}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition disabled:opacity-50 ${
-                      isAttached
-                        ? "bg-white border border-gray-200 shadow-xs"
-                        : "hover:bg-white hover:shadow-xs"
-                    }`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition disabled:opacity-50 ${isAttached ? "bg-white border border-gray-200 shadow-xs" : "hover:bg-white hover:shadow-xs"}`}
                   >
                     <div
                       className="w-2 h-2 rounded-full shrink-0"
@@ -1711,7 +1683,7 @@ function TaskDetailPanelInner({
           )}
         </div>
 
-        {/* FILE ATTACHMENTS */}
+        {/* File Attachments */}
         <div className="px-5 pb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
@@ -1746,21 +1718,17 @@ function TaskDetailPanelInner({
               </label>
             </div>
           </div>
-
           {fileError && (
             <p className="text-xs text-red-500 mb-2">{fileError}</p>
           )}
-
           {attachments.length === 0 && (
             <label
               htmlFor="detail-file-input"
               className="flex items-center gap-2 justify-center w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-xs text-gray-400 hover:border-green-300 hover:text-green-600 hover:bg-green-50 transition cursor-pointer"
             >
-              <Paperclip size={13} />
-              Đính kèm file (tối đa 10MB)
+              <Paperclip size={13} /> Đính kèm file (tối đa 10MB)
             </label>
           )}
-
           {attachments.length > 0 && (
             <div className="space-y-1.5">
               {attachments.map((att) => (
@@ -1798,7 +1766,7 @@ function TaskDetailPanelInner({
           )}
         </div>
 
-        {/* Công việc phụ */}
+        {/* Subtasks */}
         <div className="px-5 pb-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -1870,7 +1838,7 @@ function TaskDetailPanelInner({
           )}
         </div>
 
-        {/* NHẮC NHỞ QUA EMAIL */}
+        {/* Reminders */}
         <div className="px-5 pb-6">
           <div className="flex items-center gap-2 mb-3">
             <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -1882,7 +1850,6 @@ function TaskDetailPanelInner({
               </span>
             )}
           </div>
-
           {reminders.length > 0 && (
             <div className="space-y-1.5 mb-3">
               {reminders.map((r) => (
@@ -1928,7 +1895,6 @@ function TaskDetailPanelInner({
               ))}
             </div>
           )}
-
           {addingReminder ? (
             <div className="space-y-2">
               <DatePicker
@@ -1945,7 +1911,6 @@ function TaskDetailPanelInner({
                 minDate={new Date()}
                 className="w-full px-3 py-2 border border-blue-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-100 text-gray-800"
               />
-
               {localTask.due_date && (
                 <div className="flex gap-1.5 flex-wrap items-center">
                   <span className="text-xs text-gray-400">Nhắc trước:</span>
@@ -1969,11 +1934,9 @@ function TaskDetailPanelInner({
                   })}
                 </div>
               )}
-
               {reminderError && (
                 <p className="text-xs text-red-500">{reminderError}</p>
               )}
-
               <div className="flex gap-2">
                 <button
                   onClick={addReminder}
@@ -2010,6 +1973,34 @@ function TaskDetailPanelInner({
         </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: panel cố định bên phải */}
+      <div className="hidden md:flex flex-col w-90 shrink-0 border-l border-gray-100 overflow-hidden">
+        {panelContent}
+      </div>
+
+      {/* Mobile: bottom sheet overlay */}
+      <div
+        className="fixed inset-0 z-50 flex flex-col justify-end md:hidden"
+        onClick={onClose}
+      >
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+        <div
+          className="relative bg-white rounded-t-2xl overflow-hidden flex flex-col"
+          style={{ maxHeight: "88vh" }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="w-9 h-1 bg-gray-200 rounded-full" />
+          </div>
+          <div className="flex-1 overflow-y-auto">{panelContent}</div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2074,7 +2065,8 @@ function TaskCard({
             >
               {task.title}
             </h3>
-            <div className="hidden group-hover:flex gap-0.5 shrink-0">
+            {/* Edit/Delete buttons — always visible on mobile, hover on desktop */}
+            <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 sm:opacity-0">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -2094,6 +2086,16 @@ function TaskCard({
                 <Trash2 size={13} />
               </button>
             </div>
+            {/* Mobile: always show dots menu */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(task);
+              }}
+              className="sm:hidden p-1 text-gray-300 shrink-0"
+            >
+              <ChevronDown size={14} />
+            </button>
           </div>
           {task.description && (
             <p className="text-xs text-gray-400 mt-1 line-clamp-1">
@@ -2170,7 +2172,7 @@ function TaskCard({
 }
 
 /* =====================================================
-   REQ-005: DRAGGABLE CATEGORY ITEM
+   DRAGGABLE CATEGORY ITEM
 ===================================================== */
 function DraggableCategoryItem({
   cat,
@@ -2209,9 +2211,7 @@ function DraggableCategoryItem({
       onDragStart={() => onDragStart(index)}
       onDragOver={(e) => onDragOver(e, index)}
       onDrop={(e) => onDrop(e, index)}
-      className={`group mb-0.5 transition-all duration-150 ${
-        isDraggingOver ? "opacity-50 scale-[0.98]" : ""
-      }`}
+      className={`group mb-0.5 transition-all duration-150 ${isDraggingOver ? "opacity-50 scale-[0.98]" : ""}`}
     >
       <div
         className={`flex items-center gap-1 rounded-xl transition ${isActive ? "bg-blue-50" : "hover:bg-gray-50"}`}
@@ -2222,7 +2222,6 @@ function DraggableCategoryItem({
         >
           <GripVertical size={13} />
         </div>
-
         <button
           onClick={onSelect}
           className={`flex-1 text-left px-2 py-2 text-sm flex items-center gap-2 ${isActive ? "text-blue-700 font-semibold" : "text-gray-600"}`}
@@ -2271,6 +2270,177 @@ function DraggableCategoryItem({
 }
 
 /* =====================================================
+   MOBILE CATEGORIES SHEET
+===================================================== */
+function MobileCategoriesSheet({
+  categories,
+  tasks,
+  selectedCategoryId,
+  onSelect,
+  onEdit,
+  onDelete,
+  onAdd,
+  onClose,
+  draggingOverIndex,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: {
+  categories: Category[];
+  tasks: Task[];
+  selectedCategoryId: number | null;
+  onSelect: (id: number | null) => void;
+  onEdit: (cat: Category) => void;
+  onDelete: (cat: Category) => void;
+  onAdd: () => void;
+  onClose: () => void;
+  dragRef: React.MutableRefObject<number | null>;
+  draggingOverIndex: number | null;
+  onDragStart: (i: number) => void;
+  onDragOver: (e: React.DragEvent, i: number) => void;
+  onDrop: (e: React.DragEvent, i: number) => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end md:hidden"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-t-2xl overflow-hidden flex flex-col"
+        style={{ maxHeight: "75vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-9 h-1 bg-gray-200 rounded-full" />
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 shrink-0">
+          <h3 className="font-bold text-gray-900">Danh sách</h3>
+          <button
+            onClick={onAdd}
+            className="flex items-center gap-1.5 text-sm text-blue-600 font-medium"
+          >
+            <Plus size={16} /> Tạo mới
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <button
+            onClick={() => {
+              onSelect(null);
+              onClose();
+            }}
+            className={`w-full text-left px-3 py-2.5 rounded-xl text-sm flex items-center gap-2 mb-2 ${selectedCategoryId === null ? "bg-blue-50 text-blue-700 font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
+          >
+            <Inbox size={16} /> Tất cả task
+            <span className="ml-auto text-xs px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+              {tasks.length}
+            </span>
+          </button>
+          <div onDragEnd={onDragEnd}>
+            {categories.map((cat, index) => (
+              <div
+                key={cat.id}
+                draggable
+                onDragStart={() => onDragStart(index)}
+                onDragOver={(e) => onDragOver(e, index)}
+                onDrop={(e) => onDrop(e, index)}
+                onClick={() => {
+                  onSelect(cat.id);
+                  onClose();
+                }}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl mb-1 cursor-pointer ${selectedCategoryId === cat.id ? "bg-blue-50" : "hover:bg-gray-50"} ${draggingOverIndex === index ? "opacity-50" : ""}`}
+              >
+                <div
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: cat.color_code || "#3B82F6" }}
+                />
+                <span
+                  className={`flex-1 text-sm ${selectedCategoryId === cat.id ? "text-blue-700 font-semibold" : "text-gray-700"}`}
+                >
+                  {cat.name}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {tasks.filter((t) => t.category_id === cat.id).length}
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(cat);
+                  }}
+                  className="p-1 text-gray-300 hover:text-blue-500"
+                >
+                  <Pencil size={13} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(cat);
+                  }}
+                  className="p-1 text-gray-300 hover:text-red-400"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="px-4 pb-6 pt-2 border-t border-gray-100 shrink-0">
+          <div className="flex gap-2">
+            <Link
+              to="/user/sessions"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600"
+            >
+              <Shield size={15} className="text-indigo-400" /> Phiên đăng nhập
+            </Link>
+            <Link
+              to="/user/trash"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600"
+            >
+              <Trash2 size={15} className="text-rose-400" /> Thùng rác
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =====================================================
+   BOTTOM NAVIGATION (mobile only)
+===================================================== */
+function BottomNav({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: MobileTab;
+  onTabChange: (tab: MobileTab) => void;
+}) {
+  const tabs: { key: MobileTab; icon: React.ReactNode; label: string }[] = [
+    { key: "tasks", icon: <ListChecks size={20} />, label: "Tasks" },
+    { key: "categories", icon: <FolderOpen size={20} />, label: "Danh sách" },
+    { key: "stats", icon: <BarChart3 size={20} />, label: "Thống kê" },
+    { key: "settings", icon: <Settings size={20} />, label: "Cài đặt" },
+  ];
+
+  return (
+    <nav className="flex md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-pb">
+      {tabs.map(({ key, icon, label }) => (
+        <button
+          key={key}
+          onClick={() => onTabChange(key)}
+          className={`flex-1 flex flex-col items-center py-2 gap-0.5 transition ${activeTab === key ? "text-blue-600" : "text-gray-400"}`}
+        >
+          {icon}
+          <span className="text-[10px] font-medium">{label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+/* =====================================================
    MAIN PAGE
 ===================================================== */
 export default function TaskList() {
@@ -2296,11 +2466,16 @@ export default function TaskList() {
   const [sortAsc, setSortAsc] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
 
+  // Mobile state
+  const [mobileTab, setMobileTab] = useState<MobileTab>("tasks");
+  const [showMobileCategories, setShowMobileCategories] = useState(false);
+
   const dragIndexRef = useRef<number | null>(null);
   const [draggingOverIndex, setDraggingOverIndex] = useState<number | null>(
     null,
   );
 
+  // Keyboard shortcut
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "n") {
@@ -2321,6 +2496,15 @@ export default function TaskList() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Handle tab change on mobile
+  useEffect(() => {
+    if (mobileTab === "categories") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowMobileCategories(true);
+      setMobileTab("tasks");
+    }
+  }, [mobileTab]);
 
   async function fetchAll() {
     try {
@@ -2346,7 +2530,6 @@ export default function TaskList() {
   function handleDragStart(index: number) {
     dragIndexRef.current = index;
   }
-
   function handleDragOver(e: React.DragEvent, index: number) {
     e.preventDefault();
     setDraggingOverIndex(index);
@@ -2357,14 +2540,11 @@ export default function TaskList() {
     setDraggingOverIndex(null);
     const dragIndex = dragIndexRef.current;
     if (dragIndex === null || dragIndex === dropIndex) return;
-
     const reordered = [...categories];
     const [moved] = reordered.splice(dragIndex, 1);
     reordered.splice(dropIndex, 0, moved);
-
     setCategories(reordered);
     dragIndexRef.current = null;
-
     try {
       await api.patch("/categories/reorder", {
         order: reordered.map((c, i) => ({ id: c.id, display_order: i + 1 })),
@@ -2531,17 +2711,23 @@ export default function TaskList() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shrink-0">
+      {/* ── HEADER ── */}
+      <header className="bg-white border-b border-gray-100 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-600 rounded-xl">
-            <Target size={20} className="text-white" />
+            <Target size={18} className="text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-gray-900">TaskFlow</h1>
-            <p className="text-xs text-gray-400">Quản lý công việc cá nhân</p>
+            <h1 className="text-base md:text-lg font-bold text-gray-900">
+              TaskFlow
+            </h1>
+            <p className="hidden sm:block text-xs text-gray-400">
+              Quản lý công việc cá nhân
+            </p>
           </div>
         </div>
+
+        {/* Stats — desktop only */}
         <div className="hidden md:flex items-center gap-6">
           <div className="text-center">
             <p className="text-xl font-bold text-gray-900">{stats.total}</p>
@@ -2562,25 +2748,38 @@ export default function TaskList() {
             </div>
           )}
         </div>
+
+        {/* Mobile: compact stats + add button */}
+        <div className="flex items-center gap-2 md:hidden">
+          {stats.overdue > 0 && (
+            <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-lg">
+              {stats.overdue} quá hạn
+            </span>
+          )}
+          <span className="text-xs text-gray-400">{stats.pct}%</span>
+        </div>
+
         <button
           onClick={() => {
             setEditTask(undefined);
             setShowTaskModal(true);
           }}
-          className="px-4 py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 text-sm font-semibold shadow-sm transition group"
+          className="px-3 md:px-4 py-2 md:py-2.5 rounded-xl bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1.5 text-sm font-semibold shadow-sm transition"
           title="Ctrl+N"
         >
-          <Plus size={16} /> Thêm task
-          <span className="text-blue-300 text-xs font-mono ml-1 group-hover:text-blue-100">
+          <Plus size={16} />
+          <span className="hidden sm:inline">Thêm task</span>
+          <span className="hidden md:inline text-blue-300 text-xs font-mono ml-1">
             Ctrl+N
           </span>
         </button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col overflow-y-auto">
+        {/* ── SIDEBAR (desktop only) ── */}
+        <aside className="hidden md:flex w-56 shrink-0 bg-white border-r border-gray-100 flex-col overflow-y-auto">
           <div className="p-4 flex-1">
+            {/* Progress card */}
             <div className="mb-5 p-3 bg-linear-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
               <div className="flex justify-between items-center mb-2">
                 <p className="text-xs font-bold text-blue-700">
@@ -2599,6 +2798,7 @@ export default function TaskList() {
               </p>
             </div>
 
+            {/* Quick filters */}
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 mb-1.5">
                 Xem nhanh
@@ -2652,6 +2852,7 @@ export default function TaskList() {
               ))}
             </div>
 
+            {/* Categories */}
             <div>
               <div className="flex items-center justify-between px-2 mb-1.5">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">
@@ -2668,7 +2869,6 @@ export default function TaskList() {
                   <Plus size={14} />
                 </button>
               </div>
-
               <div onDragEnd={handleDragEnd}>
                 {categories.map((cat, index) => (
                   <DraggableCategoryItem
@@ -2693,7 +2893,6 @@ export default function TaskList() {
                   />
                 ))}
               </div>
-
               {categories.length === 0 && (
                 <p className="text-xs text-gray-400 text-center py-4 px-2">
                   Chưa có danh sách nào.
@@ -2711,8 +2910,8 @@ export default function TaskList() {
                   to="/user/sessions"
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"
                 >
-                  <Shield size={15} className="text-indigo-400" />
-                  Phiên đăng nhập
+                  <Shield size={15} className="text-indigo-400" /> Phiên đăng
+                  nhập
                 </Link>
                 <Link
                   to="/user/trash"
@@ -2728,19 +2927,20 @@ export default function TaskList() {
           </div>
         </aside>
 
-        {/* Main content */}
+        {/* ── MAIN CONTENT ── */}
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="bg-white border-b border-gray-100 px-5 py-3 flex items-center gap-3 shrink-0">
+          {/* Toolbar */}
+          <div className="bg-white border-b border-gray-100 px-3 md:px-5 py-2.5 md:py-3 flex items-center gap-2 shrink-0">
             <div className="relative flex-1 max-w-sm">
               <Search
-                size={15}
+                size={14}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm kiếm task..."
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-gray-50 text-gray-700"
+                className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 bg-gray-50 text-gray-700"
               />
               {searchQuery && (
                 <button
@@ -2751,12 +2951,14 @@ export default function TaskList() {
                 </button>
               )}
             </div>
-            <div className="flex gap-1">
+
+            {/* Filter pills — scrollable on mobile */}
+            <div className="flex gap-1 overflow-x-auto scrollbar-hide flex-nowrap">
               {STATUS_FILTERS.map(({ key, label, count }) => (
                 <button
                   key={key}
                   onClick={() => setFilterStatus(key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filterStatus === key ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}
+                  className={`px-2.5 md:px-3 py-1.5 rounded-lg text-xs font-semibold transition shrink-0 ${filterStatus === key ? "bg-blue-600 text-white" : "text-gray-500 hover:bg-gray-100"}`}
                 >
                   {label}
                   {count !== undefined && count > 0 && key === "overdue" && (
@@ -2767,13 +2969,17 @@ export default function TaskList() {
                 </button>
               ))}
             </div>
-            <div className="relative">
+
+            {/* Sort */}
+            <div className="relative shrink-0">
               <button
                 onClick={() => setShowSortMenu(!showSortMenu)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition"
+                className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:border-blue-300 hover:text-blue-600 transition"
               >
                 <ArrowUpDown size={13} />
-                {SORT_OPTIONS.find((s) => s.field === sortField)?.label}
+                <span className="hidden sm:inline">
+                  {SORT_OPTIONS.find((s) => s.field === sortField)?.label}
+                </span>
               </button>
               {showSortMenu && (
                 <div className="absolute right-0 top-9 z-30 bg-white rounded-xl border border-gray-100 shadow-xl p-1.5 w-36">
@@ -2801,14 +3007,16 @@ export default function TaskList() {
                 </div>
               )}
             </div>
-            <span className="text-xs text-gray-400 ml-auto font-medium">
+
+            <span className="text-xs text-gray-400 shrink-0 hidden sm:inline">
               {filteredTasks.length} task
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5">
+          {/* Task list — extra bottom padding for mobile bottom nav */}
+          <div className="flex-1 overflow-y-auto p-3 md:p-5 pb-24 md:pb-5">
             {filteredTasks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center py-20">
+              <div className="flex flex-col items-center justify-center h-full text-center py-16">
                 <div className="p-5 bg-gray-100 rounded-3xl mb-4">
                   <ListChecks size={36} className="text-gray-300" />
                 </div>
@@ -2835,7 +3043,7 @@ export default function TaskList() {
                 )}
               </div>
             ) : (
-              <div className="space-y-2.5 max-w-2xl mx-auto">
+              <div className="space-y-2 md:space-y-2.5 max-w-2xl mx-auto">
                 {filteredTasks.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -2857,6 +3065,7 @@ export default function TaskList() {
           </div>
         </main>
 
+        {/* Detail panel (desktop: side, mobile: bottom sheet) */}
         {selectedTask && (
           <TaskDetailPanel
             task={selectedTask}
@@ -2871,6 +3080,60 @@ export default function TaskList() {
         )}
       </div>
 
+      {/* ── FAB (mobile only) ── */}
+      <button
+        onClick={() => {
+          setEditTask(undefined);
+          setShowTaskModal(true);
+        }}
+        className="fixed bottom-20 right-4 z-30 md:hidden w-14 h-14 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 transition active:scale-95"
+        aria-label="Thêm task mới"
+      >
+        <Plus size={24} />
+      </button>
+
+      {/* ── BOTTOM NAV (mobile only) ── */}
+      <BottomNav
+        activeTab={mobileTab}
+        onTabChange={(tab) => {
+          if (tab === "categories") {
+            setShowMobileCategories(true);
+          } else {
+            setMobileTab(tab);
+          }
+        }}
+      />
+
+      {/* ── MOBILE CATEGORIES SHEET ── */}
+      {showMobileCategories && (
+        <MobileCategoriesSheet
+          categories={categories}
+          tasks={tasks}
+          selectedCategoryId={selectedCategoryId}
+          onSelect={(id) => {
+            setSelectedCategoryId(id);
+            setFilterStatus("all");
+          }}
+          onEdit={(cat) => {
+            setEditCategory(cat);
+            setShowCategoryModal(true);
+          }}
+          onDelete={handleDeleteCategory}
+          onAdd={() => {
+            setEditCategory(undefined);
+            setShowCategoryModal(true);
+          }}
+          onClose={() => setShowMobileCategories(false)}
+          dragRef={dragIndexRef}
+          draggingOverIndex={draggingOverIndex}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragEnd={handleDragEnd}
+        />
+      )}
+
+      {/* ── MODALS ── */}
       {showCategoryModal && (
         <CategoryModal
           initial={editCategory}

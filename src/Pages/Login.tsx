@@ -90,7 +90,7 @@ export default function Login() {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
                 Email sinh viên
               </label>
               <input
