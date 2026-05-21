@@ -120,7 +120,7 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+              <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Email sinh viên
               </label>
               <input
@@ -137,7 +137,7 @@ export default function Login() {
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <label className="flex justify-start text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   Mật khẩu
                 </label>
                 <Link
