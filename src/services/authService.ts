@@ -23,6 +23,7 @@ export interface SignupData {
 export interface SigninData {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 /* =========================
@@ -64,6 +65,15 @@ export const authService = {
     user: User;
   }> => {
     const res = await api.get("/auth/profile");
+
+    return res.data;
+  },
+
+  refresh: async (): Promise<{
+    token: string;
+    user: User;
+  }> => {
+    const res = await api.post("/auth/refresh");
 
     return res.data;
   },

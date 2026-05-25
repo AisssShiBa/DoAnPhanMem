@@ -11,6 +11,7 @@ interface AuthState {
   setAuth: (token: string, user: User) => void;
   logout: () => void;
   fetchProfile: () => Promise<void>;
+  tryRefreshSession: () => Promise<boolean>;
   isAuthenticated: () => boolean;
 }
 
@@ -33,6 +34,22 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem("token");
         await authService.logout();
         set({ token: null, user: null });
+      },
+
+      tryRefreshSession: async () => {
+        set({ isLoading: true });
+        try {
+          const { token, user } = await authService.refresh();
+          localStorage.setItem("token", token);
+          set({ token, user });
+          return true;
+        } catch {
+          localStorage.removeItem("token");
+          set({ token: null, user: null });
+          return false;
+        } finally {
+          set({ isLoading: false });
+        }
       },
 
       fetchProfile: async () => {
