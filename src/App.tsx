@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 // Dành cho khách chưa đăng nhập (Public)
 import PublicLayout from "./components/Public";
@@ -31,10 +32,29 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import ResetPassword from "./Pages/ResetPassword";
 import Sessions from "./Pages/Sessions";
 import TrashPage from "./Pages/trashPage";
+import { useAuthStore } from "./store/authStore";
+
+function AuthLogoutListener() {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+
+  useEffect(() => {
+    const handleLogout = () => {
+      void logout().finally(() => navigate("/login", { replace: true }));
+    };
+
+    window.addEventListener("auth:logout", handleLogout);
+    return () => window.removeEventListener("auth:logout", handleLogout);
+  }, [logout, navigate]);
+
+  return null;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <BrowserRouter>
+        <AuthLogoutListener />
         <Routes>
           {/* =========================
                 PUBLIC ROUTES (Ai cũng vào được)

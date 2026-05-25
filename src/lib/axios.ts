@@ -49,7 +49,8 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       originalRequest?.url?.includes("/auth/signin") ||
       originalRequest?.url?.includes("/auth/signup") ||
-      originalRequest?.url?.includes("/auth/refresh");
+      originalRequest?.url?.includes("/auth/refresh") ||
+      originalRequest?.url?.includes("/auth/logout");
 
     if (
       error.response?.status === 401 &&
@@ -84,7 +85,7 @@ api.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.dispatchEvent(new Event("auth:logout"));
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
