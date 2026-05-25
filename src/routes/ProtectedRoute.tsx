@@ -13,18 +13,22 @@ export default function ProtectedRoute({ requiredRole }: Props) {
   const hasHydrated = useAuthStore((s) => s._hasHydrated);
   const isLoading = useAuthStore((s) => s.isLoading);
   const tryRefreshSession = useAuthStore((s) => s.tryRefreshSession);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     if (!hasHydrated) return;
-    if (hasHydrated && !token) {
+
+    const shouldRefresh = !token || !isAuthenticated();
+    if (shouldRefresh) {
       void tryRefreshSession().finally(() => setCheckedRefresh(true));
       return;
     }
+
     setCheckedRefresh(true);
-  }, [hasHydrated, token, tryRefreshSession]);
+  }, [hasHydrated, isAuthenticated, token, tryRefreshSession]);
 
   if (!hasHydrated || isLoading || !checkedRefresh) return null;
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token || !isAuthenticated()) return <Navigate to="/login" replace />;
 
   // ✅ Kiểm tra role nếu có yêu cầu
   if (requiredRole && user?.role !== requiredRole) {

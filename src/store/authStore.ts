@@ -9,11 +9,22 @@ interface AuthState {
   _hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
   setAuth: (token: string, user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
   fetchProfile: () => Promise<void>;
   tryRefreshSession: () => Promise<boolean>;
   isAuthenticated: () => boolean;
 }
+
+const isTokenExpired = (token: string | null) => {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1])) as { exp?: number };
+    if (!payload.exp) return true;
+    return payload.exp * 1000 <= Date.now() + 30_000;
+  } catch {
+    return true;
+  }
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -66,7 +77,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      isAuthenticated: () => !!get().token,
+      isAuthenticated: () => !!get().token && !isTokenExpired(get().token),
     }),
     {
       name: "auth-storage",
