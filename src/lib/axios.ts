@@ -36,7 +36,13 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const refreshedToken = response.headers["x-access-token"];
+    if (typeof refreshedToken === "string") {
+      localStorage.setItem("token", refreshedToken);
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequest;
 

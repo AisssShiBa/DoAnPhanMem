@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { useAuthStore } from "../store/authStore";
@@ -52,13 +52,32 @@ export default function Login() {
 
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const tryRefreshSession = useAuthStore((s) => s.tryRefreshSession);
+
+  useEffect(() => {
+    if (token && user) {
+      navigate(user.role === "ADMIN" ? "/admin" : "/user", { replace: true });
+      return;
+    }
+
+    void tryRefreshSession().then((ok) => {
+      const refreshedUser = useAuthStore.getState().user;
+      if (ok && refreshedUser) {
+        navigate(refreshedUser.role === "ADMIN" ? "/admin" : "/user", {
+          replace: true,
+        });
+      }
+    });
+  }, [navigate, token, tryRefreshSession, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
     try {
-      const data = await authService.signin({ email, password });
+      const data = await authService.signin({ email, password, rememberMe });
       setAuth(data.token, data.user);
       if (data.user.role === "ADMIN") navigate("/admin");
       else navigate("/user");

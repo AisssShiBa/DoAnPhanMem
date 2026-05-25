@@ -36,6 +36,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import api from "../../lib/axios";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
 /* =====================================================
    TYPES
@@ -161,7 +162,8 @@ async function createNewTag(name: string): Promise<TagItem | null> {
     const res = await api.post("/tags", { name });
     return res.data.tag;
   } catch (err) {
-    console.error(err);
+    const apiErr = err as ApiError;
+    toast.error(apiErr?.response?.data?.error || "Không thể tạo tag");
     return null;
   }
 }
@@ -365,7 +367,10 @@ function CategoryModal({
       onClose();
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(apiErr?.response?.data?.error || "Lỗi hệ thống");
+      setError(
+        apiErr?.response?.data?.error ||
+          (err instanceof Error ? err.message : "Lỗi hệ thống"),
+      );
     } finally {
       setLoading(false);
     }
@@ -608,17 +613,22 @@ function TaskModal({
       }
 
       if (remindersToPost.length > 0) {
-        await Promise.allSettled(
+        const reminderResults = await Promise.allSettled(
           remindersToPost.map((r) =>
-            api
-              .post(`/tasks/${taskId}/reminders`, {
-                remind_time: r.toISOString(),
-              })
-              .catch((err) =>
-                console.error("Reminder POST failed:", err.response?.data),
-              ),
+            api.post(`/tasks/${taskId}/reminders`, {
+              remind_time: r.toISOString(),
+            }),
           ),
         );
+        const failedReminder = reminderResults.find(
+          (r) => r.status === "rejected",
+        );
+        if (failedReminder?.status === "rejected") {
+          const apiErr = failedReminder.reason as ApiError;
+          throw new Error(
+            apiErr?.response?.data?.error || "Không thể đặt nhắc nhở",
+          );
+        }
       }
 
       if (pendingFiles.length > 0) {
@@ -632,7 +642,10 @@ function TaskModal({
       onSaved();
     } catch (err) {
       const apiErr = err as ApiError;
-      setError(apiErr?.response?.data?.error || "Lỗi hệ thống");
+      setError(
+        apiErr?.response?.data?.error ||
+          (err instanceof Error ? err.message : "Lỗi hệ thống"),
+      );
     } finally {
       setLoading(false);
     }
@@ -707,7 +720,7 @@ function TaskModal({
                 onChange={(d: Date | null) => setDueDate(d)}
                 showTimeSelect
                 timeFormat="HH:mm"
-                timeIntervals={15}
+                timeIntervals={1}
                 dateFormat="dd/MM/yyyy HH:mm"
                 placeholderText="Chọn deadline"
                 className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
@@ -944,7 +957,7 @@ function TaskModal({
                 }}
                 showTimeSelect
                 timeFormat="HH:mm"
-                timeIntervals={15}
+                timeIntervals={1}
                 dateFormat="dd/MM/yyyy HH:mm"
                 placeholderText="Chọn thời gian nhắc..."
                 minDate={new Date()}
@@ -1242,7 +1255,8 @@ function TaskDetailPanelInner({
       });
       setReminderDate(null);
       setAddingReminder(false);
-      fetchReminders();
+      await fetchReminders();
+      toast.success("Đã đặt nhắc nhở");
     } catch (err: unknown) {
       const error = err as ApiError;
       setReminderError(error?.response?.data?.error || "Lỗi khi đặt nhắc nhở");
@@ -1905,7 +1919,7 @@ function TaskDetailPanelInner({
                 }}
                 showTimeSelect
                 timeFormat="HH:mm"
-                timeIntervals={15}
+                timeIntervals={1}
                 dateFormat="dd/MM/yyyy HH:mm"
                 placeholderText="Chọn thời gian nhắc"
                 minDate={new Date()}
