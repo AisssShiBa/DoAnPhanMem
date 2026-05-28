@@ -1897,7 +1897,11 @@ function TaskDetailPanelInner({
                     <Bell
                       size={13}
                       className={
-                        r.status === "sent" ? "text-green-400" : "text-blue-400"
+                        r.status === "sent"
+                          ? "text-green-400"
+                          : r.status === "skipped" || r.status === "failed"
+                          ? "text-gray-300"
+                          : "text-blue-400"
                       }
                     />
                     <span className="text-xs text-gray-600">
@@ -1912,6 +1916,14 @@ function TaskDetailPanelInner({
                     {r.status === "sent" ? (
                       <span className="text-xs text-green-500 font-medium">
                         · Đã gửi
+                      </span>
+                    ) : r.status === "skipped" ? (
+                      <span className="text-xs text-amber-500 font-medium" title="Nhắc nhở bị bỏ qua do thông báo đã tắt">
+                        · Đã bỏ qua
+                      </span>
+                    ) : r.status === "failed" ? (
+                      <span className="text-xs text-red-400 font-medium">
+                        · Gửi thất bại
                       </span>
                     ) : (
                       <span className="text-xs text-blue-500 font-medium">
@@ -2549,7 +2561,14 @@ export default function TaskList() {
         api.get("/tasks"),
       ]);
       setCategories(catRes.data.categories);
-      setTasks(taskRes.data.tasks);
+      const freshTasks: Task[] = taskRes.data.tasks;
+      setTasks(freshTasks);
+      // Sync selectedTask với dữ liệu mới nhất (để tags, etc. cập nhật đúng)
+      setSelectedTask((prev) => {
+        if (!prev) return prev;
+        const updated = freshTasks.find((t) => t.id === prev.id);
+        return updated ?? prev;
+      });
     } catch (err) {
       console.error(err);
     } finally {
