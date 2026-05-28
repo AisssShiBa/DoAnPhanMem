@@ -1144,7 +1144,7 @@ function TaskDetailPanelInner({
   task: Task;
   categories: Category[];
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (updatedTask?: Task) => void;
   onDeleted: () => void;
 }) {
   const [editTitle, setEditTitle] = useState(false);
@@ -1290,10 +1290,12 @@ function TaskDetailPanelInner({
     try {
       await api.post(`/tasks/${task.id}/tags/${tagId}`);
       const res = await api.get(`/tasks/${task.id}`);
-      setLocalTask(res.data.task);
-      onUpdated();
+      const updatedTask = res.data.task as Task;
+      setLocalTask(updatedTask);
+      onUpdated(updatedTask);
     } catch (err) {
-      console.error(err);
+      const apiErr = err as ApiError;
+      toast.error(apiErr?.response?.data?.error || "Không thể gắn tag");
     } finally {
       setTagLoading(false);
     }
@@ -1303,20 +1305,24 @@ function TaskDetailPanelInner({
     try {
       await api.delete(`/tasks/${task.id}/tags/${tagId}`);
       const res = await api.get(`/tasks/${task.id}`);
-      setLocalTask(res.data.task);
-      onUpdated();
+      const updatedTask = res.data.task as Task;
+      setLocalTask(updatedTask);
+      onUpdated(updatedTask);
     } catch (err) {
-      console.error(err);
+      const apiErr = err as ApiError;
+      toast.error(apiErr?.response?.data?.error || "Không thể gỡ tag");
     }
   }
 
   async function patchTask(data: Partial<Task>) {
     try {
       const res = await api.patch(`/tasks/${task.id}`, data);
-      setLocalTask(res.data.task);
-      onUpdated();
+      const updatedTask = res.data.task as Task;
+      setLocalTask(updatedTask);
+      onUpdated(updatedTask);
     } catch (err) {
-      console.error(err);
+      const apiErr = err as ApiError;
+      toast.error(apiErr?.response?.data?.error || "Không thể cập nhật task");
     }
   }
 
@@ -1346,18 +1352,21 @@ function TaskDetailPanelInner({
         title: newSubtask.trim(),
       });
       setNewSubtask("");
-      onUpdated();
       const res = await api.get(`/tasks/${task.id}`);
-      setLocalTask(res.data.task);
+      const updatedTask = res.data.task as Task;
+      setLocalTask(updatedTask);
+      onUpdated(updatedTask);
     } catch (err) {
-      console.error(err);
+      const apiErr = err as ApiError;
+      toast.error(apiErr?.response?.data?.error || "Không thể thêm công việc phụ");
     }
   }
 
   async function handleSubtaskUpdated() {
     const res = await api.get(`/tasks/${task.id}`);
-    setLocalTask(res.data.task);
-    onUpdated();
+    const updatedTask = res.data.task as Task;
+    setLocalTask(updatedTask);
+    onUpdated(updatedTask);
   }
 
   const isDone = localTask.status === "done";
@@ -1635,7 +1644,7 @@ function TaskDetailPanelInner({
           <div className="flex flex-wrap gap-1.5 mb-2">
             {localTask.task_tags.length === 0 && !showTagPicker && (
               <p className="text-xs text-gray-400 italic px-1">
-                Chưa có tag nào
+                Task này chưa gắn tag nào
               </p>
             )}
             {localTask.task_tags.map((tt) => (
@@ -1659,6 +1668,9 @@ function TaskDetailPanelInner({
           </div>
           {showTagPicker && (
             <div className="border border-gray-100 rounded-xl bg-gray-50 p-2 space-y-0.5">
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                Tag có sẵn
+              </p>
               {allTags.map((tag) => {
                 const isAttached = localTask.task_tags.some(
                   (tt) => tt.tag.id === tag.id,
@@ -1685,14 +1697,24 @@ function TaskDetailPanelInner({
                       #{tag.name}
                     </span>
                     {isAttached && (
-                      <CheckCircle2
-                        size={13}
-                        className="text-green-500 shrink-0"
-                      />
+                      <span className="flex items-center gap-1 text-[11px] text-green-600 font-semibold shrink-0">
+                        <CheckCircle2 size={13} />
+                        Đã gắn
+                      </span>
+                    )}
+                    {!isAttached && (
+                      <span className="text-[11px] text-gray-400 font-semibold shrink-0">
+                        Gắn
+                      </span>
                     )}
                   </button>
                 );
               })}
+              {allTags.length === 0 && (
+                <p className="px-3 py-2 text-xs text-gray-400 italic">
+                  Chưa có tag cá nhân nào. Bấm “Tạo tag mới” để tạo.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -2022,7 +2044,7 @@ function TaskDetailPanel(props: {
   task: Task;
   categories: Category[];
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (updatedTask?: Task) => void;
   onDeleted: () => void;
 }) {
   return <TaskDetailPanelInner key={props.task.id} {...props} />;
@@ -2535,6 +2557,16 @@ export default function TaskList() {
     }
   }
 
+  function handleTaskUpdated(updatedTask?: Task) {
+    if (updatedTask) {
+      setTasks((prev) =>
+        prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)),
+      );
+      setSelectedTask(updatedTask);
+    }
+    void fetchAll();
+  }
+
   useEffect(() => {
     (async () => {
       await fetchAll();
@@ -2577,16 +2609,16 @@ export default function TaskList() {
   async function handleToggle(task: Task) {
     const newStatus = task.status === "done" ? "todo" : "done";
     try {
-      await api.patch(`/tasks/${task.id}`, { status: newStatus });
+      const res = await api.patch(`/tasks/${task.id}`, { status: newStatus });
+      const updatedTask = res.data.task as Task;
       setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t)),
+        prev.map((t) => (t.id === task.id ? updatedTask : t)),
       );
       if (selectedTask?.id === task.id)
-        setSelectedTask((prev) =>
-          prev ? { ...prev, status: newStatus } : null,
-        );
+        setSelectedTask(updatedTask);
     } catch (err) {
-      console.error(err);
+      const apiErr = err as ApiError;
+      toast.error(apiErr?.response?.data?.error || "Không thể cập nhật task");
     }
   }
 
@@ -3085,7 +3117,7 @@ export default function TaskList() {
             task={selectedTask}
             categories={categories}
             onClose={() => setSelectedTask(null)}
-            onUpdated={fetchAll}
+            onUpdated={handleTaskUpdated}
             onDeleted={() => {
               handleDeleteTask(selectedTask);
               setSelectedTask(null);
