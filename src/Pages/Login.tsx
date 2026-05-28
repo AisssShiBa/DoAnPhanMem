@@ -54,23 +54,13 @@ export default function Login() {
   const setAuth = useAuthStore((s) => s.setAuth);
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
-  const tryRefreshSession = useAuthStore((s) => s.tryRefreshSession);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    if (token && user) {
+    if (token && user && isAuthenticated()) {
       navigate(user.role === "ADMIN" ? "/admin" : "/user", { replace: true });
-      return;
     }
-
-    void tryRefreshSession().then((ok) => {
-      const refreshedUser = useAuthStore.getState().user;
-      if (ok && refreshedUser) {
-        navigate(refreshedUser.role === "ADMIN" ? "/admin" : "/user", {
-          replace: true,
-        });
-      }
-    });
-  }, [navigate, token, tryRefreshSession, user]);
+  }, [isAuthenticated, navigate, token, user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

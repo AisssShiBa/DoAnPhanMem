@@ -26,6 +26,8 @@ const isTokenExpired = (token: string | null) => {
   }
 };
 
+let refreshPromise: Promise<boolean> | null = null;
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -48,19 +50,26 @@ export const useAuthStore = create<AuthState>()(
       },
 
       tryRefreshSession: async () => {
+        if (refreshPromise) return refreshPromise;
+
         set({ isLoading: true });
-        try {
-          const { token, user } = await authService.refresh();
-          localStorage.setItem("token", token);
-          set({ token, user });
-          return true;
-        } catch {
-          localStorage.removeItem("token");
-          set({ token: null, user: null });
-          return false;
-        } finally {
-          set({ isLoading: false });
-        }
+        refreshPromise = (async () => {
+          try {
+            const { token, user } = await authService.refresh();
+            localStorage.setItem("token", token);
+            set({ token, user });
+            return true;
+          } catch {
+            localStorage.removeItem("token");
+            set({ token: null, user: null });
+            return false;
+          } finally {
+            set({ isLoading: false });
+            refreshPromise = null;
+          }
+        })();
+
+        return refreshPromise;
       },
 
       fetchProfile: async () => {
