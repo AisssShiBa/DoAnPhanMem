@@ -24,6 +24,7 @@ export default function ProtectedRoute({ requiredRole }: Props) {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCheckedRefresh(true);
   }, [hasHydrated, isAuthenticated, token, tryRefreshSession]);
 
