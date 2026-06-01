@@ -1288,9 +1288,10 @@ function TaskDetailPanelInner({
   async function handleAddTag(tagId: number) {
     setTagLoading(true);
     try {
-      await api.post(`/tasks/${task.id}/tags/${tagId}`);
-      const res = await api.get(`/tasks/${task.id}`);
-      const updatedTask = res.data.task as Task;
+      const res = await api.post(`/tasks/${task.id}/tags/${tagId}`);
+      const updatedTask =
+        (res.data.task as Task | undefined) ??
+        ((await api.get(`/tasks/${task.id}`)).data.task as Task);
       setLocalTask(updatedTask);
       onUpdated(updatedTask);
     } catch (err) {
@@ -1303,9 +1304,10 @@ function TaskDetailPanelInner({
 
   async function handleRemoveTag(tagId: number) {
     try {
-      await api.delete(`/tasks/${task.id}/tags/${tagId}`);
-      const res = await api.get(`/tasks/${task.id}`);
-      const updatedTask = res.data.task as Task;
+      const res = await api.delete(`/tasks/${task.id}/tags/${tagId}`);
+      const updatedTask =
+        (res.data.task as Task | undefined) ??
+        ((await api.get(`/tasks/${task.id}`)).data.task as Task);
       setLocalTask(updatedTask);
       onUpdated(updatedTask);
     } catch (err) {
@@ -1631,7 +1633,7 @@ function TaskDetailPanelInner({
                 onClick={() => setShowTagPicker((v) => !v)}
                 className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition"
               >
-                {showTagPicker ? "Ẩn" : "+ Chọn tag"}
+                {showTagPicker ? "Ẩn" : "+ Gắn tag"}
               </button>
               <NewTagButton
                 onCreated={async (newTag) => {
@@ -1644,7 +1646,7 @@ function TaskDetailPanelInner({
           <div className="flex flex-wrap gap-1.5 mb-2">
             {localTask.task_tags.length === 0 && !showTagPicker && (
               <p className="text-xs text-gray-400 italic px-1">
-                Task này chưa gắn tag nào
+                Chưa gắn tag nào
               </p>
             )}
             {localTask.task_tags.map((tt) => (
@@ -1669,7 +1671,7 @@ function TaskDetailPanelInner({
           {showTagPicker && (
             <div className="border border-gray-100 rounded-xl bg-gray-50 p-2 space-y-0.5">
               <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                Tag có sẵn
+                Chọn tag để gắn vào task
               </p>
               {allTags.map((tag) => {
                 const isAttached = localTask.task_tags.some(
@@ -1712,7 +1714,7 @@ function TaskDetailPanelInner({
               })}
               {allTags.length === 0 && (
                 <p className="px-3 py-2 text-xs text-gray-400 italic">
-                  Chưa có tag cá nhân nào. Bấm “Tạo tag mới” để tạo.
+                  Chưa có tag cá nhân nào. Bấm "Tạo tag mới" để tạo.
                 </p>
               )}
             </div>
