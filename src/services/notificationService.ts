@@ -9,12 +9,20 @@ export interface NotificationItem {
   created_at: string;
 }
 
+export interface NotificationPagination {
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export const notificationService = {
-  getAll: async (): Promise<{
+  getAll: async (params?: { page?: number; limit?: number }): Promise<{
     notifications: NotificationItem[];
     unreadCount: number;
+    pagination?: NotificationPagination;
   }> => {
-    const res = await api.get("/notifications");
+    const res = await api.get("/notifications", { params });
     return res.data;
   },
 
@@ -24,5 +32,9 @@ export const notificationService = {
 
   markAllAsRead: async (): Promise<void> => {
     await api.patch("/notifications/read-all");
+  },
+
+  clearRead: async (): Promise<void> => {
+    await api.delete("/notifications/read");
   },
 };

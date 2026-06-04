@@ -11,6 +11,10 @@ import {
   X,
   CheckCheck,
   Menu,
+  Trash2,
+  Info,
+  AlertTriangle,
+  Wrench,
 } from "lucide-react";
 import api from "../../lib/axios";
 import {
@@ -22,10 +26,11 @@ interface Props {
   onNavigate?: (page: string) => void;
 }
 
-const TYPE_ICON: Record<string, string> = {
-  INFO: "ℹ️",
-  WARNING: "⚠️",
-  MAINTENANCE: "🔧",
+const TYPE_ICON: Record<string, React.ElementType> = {
+  INFO: Info,
+  WARNING: AlertTriangle,
+  MAINTENANCE: Wrench,
+  REMINDER: Bell,
 };
 
 function timeAgo(d: string) {
@@ -59,13 +64,11 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, []);
 
-  // Đóng dropdown/menu khi click ngoài
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -85,20 +88,13 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Đóng mobile menu khi chuyển trang
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setShowMobileMenu(false);
     setShowNotif(false);
   }, [location.pathname]);
 
-  // Khóa scroll body khi mobile menu mở
   useEffect(() => {
-    if (showMobileMenu) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = showMobileMenu ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -120,10 +116,23 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
 
   const handleMarkAllAsRead = async () => {
     setLoading(true);
-    await notificationService.markAllAsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
-    setLoading(false);
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearRead = async () => {
+    setLoading(true);
+    try {
+      await notificationService.clearRead();
+      setNotifications((prev) => prev.filter((n) => !n.is_read));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNavigate = async (page: string) => {
@@ -132,13 +141,14 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
       try {
         await api.post("/auth/logout");
       } catch {
-        // ignore
+        // ignore logout network errors
       } finally {
         localStorage.removeItem("token");
         navigate("/login");
       }
       return;
     }
+
     switch (page) {
       case "tasks":
         navigate("/user/tasks");
@@ -169,12 +179,10 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        {/* Logo */}
         <Link to="/user" className="flex items-center gap-2 shrink-0">
           <img src={logo} alt="Logo" className="w-24 h-auto object-contain" />
         </Link>
 
-        {/* Nav — ẩn trên mobile */}
         <nav className="hidden md:flex items-center gap-1">
           {navItems.map(({ key, label, icon: Icon, path }) => {
             const active = location.pathname === path;
@@ -195,9 +203,7 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
           })}
         </nav>
 
-        {/* Right actions */}
         <div className="flex items-center gap-1">
-          {/* Chuông thông báo */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={handleOpenNotif}
@@ -228,10 +234,20 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
                       <button
                         onClick={handleMarkAllAsRead}
                         disabled={loading}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition"
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded-lg hover:bg-blue-50 transition disabled:opacity-50"
                       >
                         <CheckCheck size={13} />
                         Đọc tất cả
+                      </button>
+                    )}
+                    {notifications.some((n) => n.is_read) && (
+                      <button
+                        onClick={handleClearRead}
+                        disabled={loading}
+                        className="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                        title="Xóa thông báo đã đọc"
+                      >
+                        <Trash2 size={13} />
                       </button>
                     )}
                     <button
@@ -250,46 +266,50 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
                       <p className="text-sm">Chưa có thông báo nào</p>
                     </div>
                   ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => !n.is_read && handleMarkAsRead(n.id)}
-                        className={`px-4 py-3 border-b border-gray-50 cursor-pointer transition hover:bg-gray-50 ${
-                          !n.is_read ? "bg-blue-50/40" : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-base shrink-0 mt-0.5">
-                            {TYPE_ICON[n.type ?? "INFO"] ?? "ℹ️"}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p
-                              className={`text-sm font-semibold leading-snug ${!n.is_read ? "text-gray-900" : "text-gray-600"}`}
-                            >
-                              {n.title}
-                            </p>
-                            {n.content && (
-                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                                {n.content}
+                    notifications.map((n) => {
+                      const Icon = TYPE_ICON[n.type ?? "INFO"] ?? Info;
+                      return (
+                        <div
+                          key={n.id}
+                          onClick={() => !n.is_read && handleMarkAsRead(n.id)}
+                          className={`px-4 py-3 border-b border-gray-50 cursor-pointer transition hover:bg-gray-50 ${
+                            !n.is_read ? "bg-blue-50/40" : ""
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <span className="shrink-0 mt-0.5 text-gray-400">
+                              <Icon size={16} />
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`text-sm font-semibold leading-snug ${
+                                  !n.is_read ? "text-gray-900" : "text-gray-600"
+                                }`}
+                              >
+                                {n.title}
                               </p>
+                              {n.content && (
+                                <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                                  {n.content}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-1">
+                                {timeAgo(n.created_at)}
+                              </p>
+                            </div>
+                            {!n.is_read && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
                             )}
-                            <p className="text-xs text-gray-400 mt-1">
-                              {timeAgo(n.created_at)}
-                            </p>
                           </div>
-                          {!n.is_read && (
-                            <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-1.5" />
-                          )}
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Settings — ẩn trên mobile (có trong menu) */}
           <button
             onClick={() => handleNavigate("settings")}
             className={`hidden md:flex p-2 rounded-lg transition cursor-pointer ${
@@ -302,7 +322,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
             <Settings size={18} />
           </button>
 
-          {/* Logout — ẩn trên mobile */}
           <button
             onClick={() => handleNavigate("logout")}
             className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition ml-1 cursor-pointer"
@@ -311,7 +330,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
             Đăng xuất
           </button>
 
-          {/* Hamburger — chỉ hiện trên mobile */}
           <button
             onClick={() => {
               setShowMobileMenu((v) => !v);
@@ -325,21 +343,17 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
       {showMobileMenu && (
         <div className="fixed inset-0 z-40 md:hidden">
-          {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setShowMobileMenu(false)}
           />
 
-          {/* Drawer từ phải */}
           <div
             ref={mobileMenuRef}
             className="absolute top-0 right-0 h-full w-64 bg-white shadow-2xl flex flex-col"
           >
-            {/* Drawer header */}
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
               <span className="font-bold text-gray-800">Menu</span>
               <button
@@ -350,7 +364,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
               </button>
             </div>
 
-            {/* Nav items */}
             <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
               {navItems.map(({ key, label, icon: Icon, path }) => {
                 const active = location.pathname === path;
@@ -385,7 +398,6 @@ const HeaderUser: React.FC<Props> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Logout ở dưới */}
             <div className="px-3 py-4 border-t border-gray-100">
               <button
                 onClick={() => handleNavigate("logout")}
