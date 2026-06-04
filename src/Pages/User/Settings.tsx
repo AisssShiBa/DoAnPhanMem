@@ -34,6 +34,7 @@ interface ProfileData {
   phone: string;
   school: string;
   major: string;
+  has_password: boolean;
 }
 interface SettingsData {
   notification_enabled: boolean;
@@ -444,7 +445,13 @@ function ProfileTab({
 /* ==================================================
    SECURITY TAB
 ================================================== */
-function SecurityTab() {
+function SecurityTab({
+  hasPassword,
+  onPasswordCreated,
+}: {
+  hasPassword: boolean;
+  onPasswordCreated: () => void;
+}) {
   const [form, setForm] = useState({ current: "", next: "", confirm: "" });
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNext, setShowNext] = useState(false);
@@ -458,13 +465,17 @@ function SecurityTab() {
     show: boolean;
     toggle: () => void;
   }[] = [
-    {
-      key: "current",
-      label: "Mật khẩu hiện tại",
-      placeholder: "••••••••",
-      show: showCurrent,
-      toggle: () => setShowCurrent((v) => !v),
-    },
+    ...(hasPassword
+      ? [
+          {
+            key: "current" as keyof typeof form,
+            label: "Mật khẩu hiện tại",
+            placeholder: "Nhập mật khẩu hiện tại",
+            show: showCurrent,
+            toggle: () => setShowCurrent((v) => !v),
+          },
+        ]
+      : []),
     {
       key: "next",
       label: "Mật khẩu mới",
@@ -484,28 +495,35 @@ function SecurityTab() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (hasPassword && !form.current) {
+      setError("Vui lòng nhập mật khẩu hiện tại");
+      return;
+    }
     if (form.next.length < 8) {
-      setError("Mật khẩu mới phải ít nhất 8 ký tự");
+      setError("Mật khẩu mới phải có ít nhất 8 ký tự");
       return;
     }
     if (form.next !== form.confirm) {
       setError("Mật khẩu xác nhận không khớp");
       return;
     }
+
     setStatus("saving");
     try {
       await api.put("/profile/password", {
-        current_password: form.current,
+        ...(hasPassword && { current_password: form.current }),
         new_password: form.next,
       });
       setStatus("saved");
       setForm({ current: "", next: "", confirm: "" });
       setShowCurrent(false);
       setShowNext(false);
+      if (!hasPassword) onPasswordCreated();
       setTimeout(() => setStatus("idle"), 3000);
     } catch (err: unknown) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((err as any)?.response?.data?.error ?? "Đổi mật khẩu thất bại");
+      setError((err as any)?.response?.data?.error ?? "Cập nhật mật khẩu thất bại");
       setStatus("error");
       setTimeout(() => setStatus("idle"), 3000);
     }
@@ -518,13 +536,23 @@ function SecurityTab() {
           <Lock size={15} className="text-amber-600" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-slate-800">Đổi mật khẩu</h3>
+          <h3 className="text-sm font-semibold text-slate-800">
+            {hasPassword ? "Đổi mật khẩu" : "Tạo mật khẩu"}
+          </h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Khuyến nghị đổi định kỳ mỗi 3 tháng
+            {hasPassword
+              ? "Khuyến nghị đổi định kỳ mỗi 3 tháng"
+              : "Tạo mật khẩu để có thể đăng nhập bằng email"}
           </p>
         </div>
       </div>
       <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+        {!hasPassword && (
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2.5 text-xs text-indigo-700">
+            Tài khoản này chưa có mật khẩu. Hãy tạo mật khẩu mới để có thể
+            đăng nhập bằng email và mật khẩu.
+          </div>
+        )}
         {fields.map(({ key, label, placeholder, show, toggle }) => (
           <div key={key}>
             <label className="block text-[11px] font-semibold tracking-widest text-slate-400 uppercase mb-2">
@@ -562,13 +590,15 @@ function SecurityTab() {
           </p>
         )}
         <div className="flex justify-end pt-1">
-          <SaveBtn status={status} label="Đổi mật khẩu" />
+          <SaveBtn
+            status={status}
+            label={hasPassword ? "Đổi mật khẩu" : "Tạo mật khẩu"}
+          />
         </div>
       </form>
     </div>
   );
 }
-
 /* ==================================================
    SESSIONS TAB
 ================================================== */
@@ -797,6 +827,7 @@ export default function Settings() {
     phone: "",
     school: "",
     major: "",
+    has_password: false,
   });
   const [settings, setSettings] = useState<SettingsData>({
     notification_enabled: true,
@@ -815,6 +846,7 @@ export default function Settings() {
           phone: user.phone || "",
           school: user.school || "",
           major: user.major || "",
+          has_password: Boolean(user.has_password),
         });
         if (user.settings)
           setSettings({
@@ -927,7 +959,14 @@ export default function Settings() {
                 setSettings={setSettings}
               />
             )}
-            {activeTab === "security" && <SecurityTab />}
+            {activeTab === "security" && (
+              <SecurityTab
+                hasPassword={profile.has_password}
+                onPasswordCreated={() =>
+                  setProfile((prev) => ({ ...prev, has_password: true }))
+                }
+              />
+            )}
             {activeTab === "sessions" && (
               <SessionsTab
                 sessions={sessions}
