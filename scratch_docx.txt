@@ -1,0 +1,704 @@
+BẢNG YÊU CẦU CHỨC NĂNG NGHIỆP VỤ
+Hệ thống Quản lý Công việc Cá nhân Sinh viên
+(Tương tự Google Tasks — Phiên bản đầy đủ theo triển khai thực tế)
+PHẦN I — NGHIỆP VỤ SINH VIÊN (SV)
+Bộ phận thực hiện: Sinh viên (đã đăng nhập vào hệ thống)  •  Mã số: SV
+I.1. Quản lý Tài khoản & Xác thực
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Đăng ký tài khoản
+Lưu trữ
+AUTH_QĐ1
+SV_BM_AUTH
+2
+Đăng nhập bằng Email/Mật khẩu
+Lưu trữ
+AUTH_QĐ2
+3
+Đăng nhập bằng Google OAuth
+Lưu trữ
+AUTH_QĐ3
+4
+Xác minh email (Verify)
+Lưu trữ
+AUTH_QĐ4
+Bắt buộc trước khi dùng
+5
+Quên mật khẩu / Đặt lại
+Lưu trữ
+AUTH_QĐ5
+Token hết hạn sau 15 phút
+6
+Đăng xuất khỏi thiết bị hiện tại
+Lưu trữ
+AUTH_QĐ6
+Xóa refresh token
+7
+Đăng xuất tất cả thiết bị
+Lưu trữ
+AUTH_QĐ7
+Xóa toàn bộ phiên
+8
+Tự động làm mới phiên (Refresh token)
+Tính toán
+AUTH_QĐ8
+Access token 15 phút
+9
+Cập nhật hồ sơ cá nhân
+Lưu trữ
+AUTH_QĐ9
+SV_BM_PROFILE
+10
+Đổi mật khẩu
+Lưu trữ
+AUTH_QĐ10
+Yêu cầu mật khẩu cũ
+Quy định liên quan:
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+AUTH_QĐ1
+Đăng ký tài khoản
+Mỗi email chỉ tạo 1 tài khoản. Họ tên tối thiểu 2 ký tự, mật khẩu tối thiểu 8 ký tự. Tài khoản tạo ở trạng thái PENDING cho đến khi xác minh email.
+2
+AUTH_QĐ2
+Đăng nhập Email
+Chỉ tài khoản có status=ACTIVE mới đăng nhập được. Sai mật khẩu trả lỗi 401. Tài khoản Google không được đăng nhập bằng mật khẩu.
+3
+AUTH_QĐ3
+Đăng nhập Google OAuth
+Sử dụng Google OAuth 2.0 (Passport.js). Tự động tạo tài khoản nếu email chưa tồn tại. Status mặc định là ACTIVE.
+4
+AUTH_QĐ4
+Xác minh email
+Token xác minh hết hạn sau 15 phút. Sau xác minh, status chuyển PENDING → ACTIVE, token bị xóa.
+5
+AUTH_QĐ5
+Đặt lại mật khẩu
+Gửi email kèm link reset token (hết hạn 15 phút). API trả về cùng thông báo dù email có tồn tại hay không (tránh enumeration).
+6
+AUTH_QĐ6
+Đăng xuất
+Xóa refresh token của phiên hiện tại khỏi DB. Xóa cookie refreshToken.
+7
+AUTH_QĐ7
+Đăng xuất tất cả
+Xóa toàn bộ refresh token của user. Áp dụng khi phát hiện thiết bị lạ.
+8
+AUTH_QĐ8
+Refresh token
+Access token sống 15 phút. Refresh token: 1 ngày (không chọn remember) hoặc 30 ngày (chọn remember me). Tự động xoay token khi refresh.
+9
+AUTH_QĐ9
+Hồ sơ cá nhân
+Cho phép cập nhật: họ tên, số điện thoại, trường học, chuyên ngành. Không cho đổi email.
+10
+AUTH_QĐ10
+Đổi mật khẩu
+Cần nhập đúng mật khẩu cũ. Tài khoản Google không đổi được mật khẩu.
+I.2. Quản lý Phiên đăng nhập (Sessions)
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem danh sách phiên đang hoạt động
+Tra cứu
+SESSION_QĐ1
+SV_BM_SESSION
+2
+Xác định phiên hiện tại
+Tra cứu
+SESSION_QĐ2
+Đánh dấu is_current
+3
+Thu hồi (revoke) phiên cụ thể
+Lưu trữ
+SESSION_QĐ3
+4
+Đăng xuất tất cả phiên
+Lưu trữ
+AUTH_QĐ7
+Xem mục I.1
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+SESSION_QĐ1
+Danh sách phiên
+Chỉ trả về phiên chưa hết hạn (expires_at > now). Mỗi phiên hiển thị: thiết bị (User-Agent), địa chỉ IP, thời gian tạo.
+2
+SESSION_QĐ2
+Phiên hiện tại
+Xác định bằng cách so sánh refresh token trong cookie với token trong DB.
+3
+SESSION_QĐ3
+Thu hồi phiên
+Chỉ được thu hồi phiên của chính mình.
+I.3. Thông báo Cá nhân (Notifications)
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem danh sách thông báo
+Tra cứu
+NOTIF_QĐ1
+SV_BM_NOTIF
+2
+Đếm thông báo chưa đọc
+Tính toán
+NOTIF_QĐ1
+Hiển thị badge
+3
+Đánh dấu một thông báo đã đọc
+Lưu trữ
+NOTIF_QĐ2
+4
+Đánh dấu tất cả đã đọc
+Lưu trữ
+NOTIF_QĐ2
+5
+Nhận thông báo hệ thống từ Admin
+Lưu trữ
+NOTIF_QĐ3
+Broadcast từ QTV
+6
+Nhận thông báo tài khoản bị khóa
+Lưu trữ
+NOTIF_QĐ4
+Loại WARNING
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+NOTIF_QĐ1
+Xem thông báo
+Lấy 20 thông báo gần nhất, sắp xếp theo created_at DESC. Trả về cả unreadCount.
+2
+NOTIF_QĐ2
+Đánh dấu đã đọc
+Chỉ được đánh dấu thông báo của chính mình (kiểm tra user_id).
+3
+NOTIF_QĐ3
+Thông báo broadcast
+Admin gửi đến tất cả user ACTIVE. Loại: INFO / WARNING / MAINTENANCE.
+4
+NOTIF_QĐ4
+Thông báo khóa tài khoản
+Tự động tạo khi Admin đổi status sang BANNED, nội dung ghi rõ lý do.
+I.4. Quản lý Công việc (Tasks)
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Tạo công việc (Task)
+Lưu trữ
+TASK_QĐ1
+SV_BM_TASK
+2
+Cập nhật công việc
+Lưu trữ
+TASK_QĐ2
+SV_BM_TASK
+3
+Xóa công việc (soft delete)
+Lưu trữ
+TASK_QĐ3
+is_deleted = true
+4
+Xem danh sách công việc
+Tra cứu
+TASK_QĐ4
+SV_BM_TASK
+5
+Xem chi tiết công việc
+Tra cứu
+TASK_QĐ4
+6
+Đánh dấu hoàn thành / Mở lại
+Lưu trữ
+TASK_QĐ5
+SV_BM_TASK
+7
+Tìm kiếm công việc theo từ khóa
+Tra cứu
+TASK_QĐ6
+8
+Lọc theo trạng thái / deadline / danh mục
+Tra cứu
+TASK_QĐ7
+9
+Sắp xếp công việc
+Tra cứu
+TASK_QĐ7
+10
+Gắn nhãn (Tags) cho công việc
+Lưu trữ
+TAG_QĐ1
+SV_BM_TAG
+11
+Gắn danh mục (Category)
+Lưu trữ
+CAT_QĐ1
+SV_BM_CAT
+12
+Đặt mức độ ưu tiên
+Lưu trữ
+TASK_QĐ1
+Cao / Trung bình / Thấp
+13
+Đặt nhắc nhở (Reminder)
+Tính toán, Lưu trữ
+REMIND_QĐ1
+SV_BM_REMIND
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+TASK_QĐ1
+Tạo công việc
+Bắt buộc: tiêu đề. Tùy chọn: mô tả, deadline, mức ưu tiên (high/medium/low), category_id, tags. Mặc định status = 'todo'.
+2
+TASK_QĐ2
+Cập nhật công việc
+Chỉ chủ sở hữu mới được sửa (user_id = req.user.id). Cho phép chỉnh sửa mọi trường trừ user_id.
+3
+TASK_QĐ3
+Xóa công việc
+Soft delete: đặt is_deleted=true, deleted_at=now(). Dữ liệu không bị xóa vật lý khỏi DB.
+4
+TASK_QĐ4
+Xem công việc
+Chỉ xem được công việc của chính mình (is_deleted=false). Hỗ trợ phân trang.
+5
+TASK_QĐ5
+Hoàn thành
+Đổi status 'todo'/'in_progress' → 'done'. Mở lại: đổi 'done' → 'todo'. Lưu timestamp hoàn thành.
+6
+TASK_QĐ6
+Tìm kiếm
+Tìm theo tiêu đề hoặc nội dung mô tả (contains, không phân biệt hoa thường).
+7
+TASK_QĐ7
+Lọc & sắp xếp
+Lọc theo: status, category_id, tag, deadline (today/week/overdue). Sắp xếp theo: deadline, created_at, priority.
+8
+TAG_QĐ1
+Nhãn công việc
+Mỗi task có thể gắn nhiều tag. Tag có thể là tag mặc định của hệ thống (user_id=null) hoặc tag riêng của user.
+9
+CAT_QĐ1
+Danh mục
+Mỗi task thuộc tối đa 1 danh mục. Danh mục do user tự tạo hoặc dùng danh mục mặc định của hệ thống.
+10
+REMIND_QĐ1
+Nhắc nhở
+Cho phép đặt thời gian nhắc (trước 15 phút, 1 giờ, 1 ngày hoặc thời điểm tùy chỉnh). Hệ thống tạo user_notification tương ứng.
+I.5. Danh mục & Nhãn cá nhân
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Tạo danh mục cá nhân
+Lưu trữ
+CAT_QĐ2
+SV_BM_CAT
+2
+Cập nhật danh mục
+Lưu trữ
+CAT_QĐ2
+3
+Xóa danh mục
+Lưu trữ
+CAT_QĐ2
+Soft delete
+4
+Xem danh sách danh mục
+Tra cứu
+SV_BM_CAT
+Gồm danh mục hệ thống
+5
+Tạo nhãn cá nhân
+Lưu trữ
+TAG_QĐ2
+SV_BM_TAG
+6
+Xóa nhãn cá nhân
+Lưu trữ
+TAG_QĐ2
+7
+Xem danh sách nhãn
+Tra cứu
+SV_BM_TAG
+Gồm nhãn hệ thống
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+CAT_QĐ2
+Danh mục cá nhân
+User chỉ được sửa/xóa danh mục của chính mình (user_id = req.user.id). Danh mục hệ thống (user_id=null) chỉ QTV được chỉnh sửa.
+2
+TAG_QĐ2
+Nhãn cá nhân
+Tương tự danh mục. Tag hệ thống (user_id=null) do QTV quản lý. Không trùng tên trong cùng user.
+I.6. Thống kê Hiệu suất Cá nhân
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem thống kê tổng quan
+Tra cứu, Tổng hợp
+STAT_QĐ1
+SV_BM_STAT
+2
+Xem biểu đồ theo ngày/tuần/tháng
+Tính toán
+STAT_QĐ1
+Completion rate
+3
+Xem số task theo trạng thái
+Tính toán
+STAT_QĐ1
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+STAT_QĐ1
+Thống kê cá nhân
+Tính: tổng task, done, in_progress, todo, completion rate (%). Lọc theo khoảng thời gian. Chỉ tính task của chính user (is_deleted=false).
+Biểu mẫu — SV_BM_TASK: Danh sách Công việc
+STT
+Tiêu đề
+Mô tả
+Deadline
+Trạng thái
+Ưu tiên
+Danh mục
+Nhãn
+Nhắc nhở
+Biểu mẫu — SV_BM_SESSION: Phiên đăng nhập
+STT
+Thiết bị
+Địa chỉ IP
+Thời gian đăng nhập
+Hết hạn
+Phiên hiện tại
+Biểu mẫu — SV_BM_NOTIF: Thông báo
+STT
+Tiêu đề
+Nội dung
+Loại
+Thời gian
+Đã đọc
+PHẦN II — NGHIỆP VỤ QUẢN TRỊ VIÊN (QTV)
+Bộ phận thực hiện: Quản trị viên hệ thống  •  Mã số: QTV  •  Chỉ tài khoản có role=ADMIN mới truy cập được
+II.1. Quản lý Tài khoản Người dùng
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem danh sách tất cả người dùng
+Tra cứu
+ACC_QĐ1
+QTV_BM_USER
+Phân trang, 15 bản ghi/trang
+2
+Tìm kiếm người dùng theo tên / email
+Tra cứu
+ACC_QĐ1
+3
+Lọc người dùng theo trạng thái
+Tra cứu
+ACC_QĐ1
+ACTIVE / BANNED / PENDING
+4
+Xem chi tiết hồ sơ người dùng
+Tra cứu
+ACC_QĐ2
+5
+Khóa tài khoản người dùng (Ban)
+Lưu trữ
+ACC_QĐ3
+Kèm lý do, ghi log, gửi thông báo
+6
+Mở khóa tài khoản (Unban)
+Lưu trữ
+ACC_QĐ3
+Chuyển BANNED → ACTIVE
+7
+Xóa tài khoản người dùng
+Lưu trữ
+ACC_QĐ5
+Soft delete
+8
+Xuất danh sách người dùng ra Excel
+Tổng hợp
+File .xlsx
+9
+Xem thống kê task của từng người dùng
+Tra cứu, Tổng hợp
+STAT_QĐ2
+Chi tiết done/in_progress/todo
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+ACC_QĐ1
+Danh sách người dùng
+Trả về danh sách user (is_deleted=false). Phân trang: 15 bản ghi/trang. Hỗ trợ tìm kiếm theo tên, email và lọc theo status.
+2
+ACC_QĐ2
+Chi tiết người dùng
+Xem đầy đủ thông tin user, vai trò, ngày tạo, số lượng task.
+3
+ACC_QĐ3
+Khóa / Mở khóa
+Không được khóa tài khoản Admin khác. Khi khóa: ghi activity_log, tạo user_notification loại WARNING gửi đến user.
+4
+ACC_QĐ5
+Xóa tài khoản
+Soft delete: is_deleted=true, deleted_at=now(). Không xóa dữ liệu task liên quan.
+5
+STAT_QĐ2
+Thống kê task của user
+Tính: tổng/done/in_progress/todo/completion rate. Trả về 5 task gần nhất và top 5 danh mục của user đó.
+II.2. Thống kê Hệ thống
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem tổng quan hệ thống
+Tra cứu, Tổng hợp
+SYS_QĐ1
+QTV_BM_STATS
+2
+Xem biểu đồ DAU (Daily Active Users)
+Tính toán
+SYS_QĐ2
+30 ngày gần nhất
+3
+Xem biểu đồ MAU (Monthly Active Users)
+Tính toán
+SYS_QĐ2
+5 tháng gần nhất
+4
+Xem heatmap hoạt động
+Tính toán
+SYS_QĐ3
+Theo giờ × ngày trong tuần
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+SYS_QĐ1
+Thống kê tổng quan
+Bao gồm: tổng user, user ACTIVE, tổng task, task done, task pending, tổng danh mục, DAU hôm nay, MAU tháng này. Có % tăng trưởng so với kỳ trước.
+2
+SYS_QĐ2
+DAU / MAU
+DAU: số user unique có activity_log trong ngày. MAU: trong tháng. Tính % thay đổi so với kỳ trước.
+3
+SYS_QĐ3
+Heatmap hoạt động
+Ma trận 7 ngày × 24 giờ, mỗi ô là số lượng activity_log trong khung giờ đó.
+II.3. Phát thanh Thông báo Hệ thống
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Soạn và gửi thông báo broadcast
+Lưu trữ
+BROAD_QĐ1
+QTV_BM_NOTIF
+2
+Xem lịch sử phát thanh
+Tra cứu
+BROAD_QĐ2
+QTV_BM_NOTIF
+Phân trang 20/trang
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+BROAD_QĐ1
+Phát thanh
+Bắt buộc: tiêu đề, nội dung, loại (INFO/WARNING/MAINTENANCE). Gửi đến tất cả user có status=ACTIVE. Tạo user_notification cho từng user. Ghi activity_log: BROADCAST "title" → N users.
+2
+BROAD_QĐ2
+Lịch sử phát thanh
+Lọc activity_log có action chứa 'BROADCAST'. Parse: tiêu đề từ "...", số người nhận từ → N users. Trả về: tiêu đề, loại, số người nhận, người gửi, thời gian.
+II.4. Nhật ký Hoạt động (Audit Logs)
+STT
+Công việc
+Loại
+Quy định liên quan
+Biểu mẫu
+Ghi chú
+1
+Xem nhật ký hoạt động hệ thống
+Tra cứu
+LOG_QĐ1
+QTV_BM_LOG
+Phân trang 20/trang
+2
+Tìm kiếm nhật ký theo nội dung / user
+Tra cứu
+LOG_QĐ1
+STT
+Mã số
+Tên Quy định
+Mô tả chi tiết
+Ghi chú
+1
+LOG_QĐ1
+Nhật ký hoạt động
+Ghi lại: đăng nhập, khóa/mở tài khoản, broadcast, các thao tác quan trọng. Hiển thị: tên/email user, vai trò, nội dung hành động, thời gian.
+Biểu mẫu — QTV_BM_USER: Danh sách Người dùng
+STT
+Họ tên
+Email
+SĐT
+Vai trò
+Trạng thái
+Số task
+Đăng nhập qua
+Ngày tạo
+Biểu mẫu — QTV_BM_STATS: Thống kê Hệ thống
+Thời gian
+Tổng User
+User Active
+Tổng Task
+Task Done
+DAU
+MAU
+Biểu mẫu — QTV_BM_LOG: Nhật ký Hoạt động
+STT
+Họ tên
+Email
+Vai trò
+Hành động
+Thời gian
+Biểu mẫu — QTV_BM_NOTIF: Lịch sử Phát thanh
+STT
+Tiêu đề thông báo
+Loại
+Số người nhận
+Người gửi
+Thời gian gửi
+PHẦN III — YÊU CẦU CHỨC NĂNG HỆ THỐNG
+STT
+Nội dung
+Mô tả chi tiết
+Ghi chú
+1
+Phân quyền truy cập (RBAC)
+Có 2 vai trò: ADMIN và USER (mặc định khi đăng ký). ADMIN truy cập được toàn bộ API /admin/*. USER chỉ truy cập API của bản thân. Middleware xác thực JWT trên mọi route cần đăng nhập.
+Role lưu trong bảng roles, liên kết qua role_id
+2
+Xác thực & Bảo mật
+Access token JWT sống 15 phút. Refresh token lưu trong DB và cookie httpOnly. Mật khẩu hash bằng bcrypt (salt 10). Hỗ trợ Google OAuth 2.0 qua Passport.js.
+Chống CSRF bằng SameSite cookie
+3
+Gửi Email tự động
+Email xác minh tài khoản (token 15 phút). Email đặt lại mật khẩu (token 15 phút). Email thông báo khi có sự kiện quan trọng. Sử dụng template HTML.
+4
+Thông báo Push / In-app
+Hệ thống tạo user_notification khi: admin gửi broadcast, task gần deadline, tài khoản bị khóa. Người dùng xem và đánh dấu đã đọc.
+5
+Quản lý Session đa thiết bị
+Mỗi lần đăng nhập tạo 1 bản ghi refresh_token kèm device_info (User-Agent) và ip_address. Người dùng xem và thu hồi từng phiên riêng lẻ.
+6
+Nhật ký hoạt động
+Ghi activity_log cho các hành động quan trọng: đăng nhập, khóa/mở tài khoản, gửi broadcast, các thao tác admin. Dùng để audit và bảo mật.
+7
+Soft Delete toàn hệ thống
+Các bảng chính (users, tasks, categories, tags) đều dùng soft delete (is_deleted, deleted_at). Dữ liệu không bao giờ bị xóa vật lý khỏi DB.
+8
+Thống kê & Phân tích
+Thống kê DAU/MAU từ activity_log. Heatmap hoạt động 7×24. Completion rate, task growth. Biểu đồ phân bổ theo trạng thái và danh mục.
+PHẦN IV — YÊU CẦU CHẤT LƯỢNG
+STT
+Nội dung
+Tiêu chuẩn
+Mô tả chi tiết
+Ghi chú
+1
+Hiệu năng phản hồi
+Hiệu quả
+Thao tác tạo/cập nhật/xóa task: phản hồi < 500ms. Tìm kiếm task: < 2 giây. Tải danh sách (phân trang): < 1 giây. Broadcast đến 1000 user: < 5 giây.
+2
+Bảo mật dữ liệu
+An toàn
+Mật khẩu hash bcrypt salt 10. JWT ký bằng secret key riêng cho access và refresh. Cookie httpOnly + SameSite. Không trả dữ liệu nhạy cảm (password_hash, tokens) trong API response.
+3
+Tính sẵn sàng
+Độ tin cậy
+Soft delete toàn hệ thống, không mất dữ liệu người dùng. Refresh token tự động xoay giúp session liên tục. Xử lý lỗi có cấu trúc, trả về mã HTTP và message rõ ràng.
+4
+Khả năng mở rộng
+Mở rộng
+Kiến trúc tách biệt frontend (React + Vite) và backend (Express). Prisma ORM dễ migrate schema. Hệ thống role có thể mở rộng thêm role mới. API RESTful chuẩn, có thể tích hợp mobile.
+5
+Giao diện người dùng
+Thân thiện
+Responsive trên desktop, tablet, mobile. Thao tác nhanh, ít bước (tạo task trong < 3 bước). Skeleton loading, error state, empty state đầy đủ.
+6
+Tùy biến
+Tiến hóa
+User tự tạo danh mục và nhãn riêng. Cài đặt reminder tùy chỉnh theo từng task.
+7
+Tương thích
+Tương thích
+Hỗ trợ Chrome, Firefox, Edge, Safari (2 phiên bản gần nhất). API CORS cấu hình đúng cho frontend domain. Cookie SameSite=lax hoạt động đúng trên các trình duyệt hiện đại.
+8
+Bảo trì & Giám sát
+Bảo trì
+Ghi activity_log đủ thông tin để debug. Audit log cho mọi hành động admin. Soft delete giúp phục hồi dữ liệu khi cần. Code có cấu trúc rõ ràng (controller/service/route tách biệt).
